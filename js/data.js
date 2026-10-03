@@ -130,6 +130,8 @@ const GOALS = {
     load: 'Altas respecto a tu máximo (aprox. 80–90 % de 1RM o más)',
     tempo: 'Bajada controlada y subida con intención de acelerar, aunque la barra se mueva lenta.',
     prescription: { sets: '3–5', rir: 'RIR 1–3', rest: '2–5 min' },
+    setsNum: 4,      // series por ejercicio en el modo entrenamiento
+    restSec: 180,    // descanso entre series (segundos)
     keys: [
       'La especificidad importa: mejoras más en los ejercicios y rangos de repeticiones que practicas.',
       'Una técnica estable forma parte del entrenamiento de fuerza; no es un detalle estético.',
@@ -151,6 +153,8 @@ const GOALS = {
     load: 'Moderada: la que te permita acercarte al fallo dentro del rango elegido',
     tempo: 'Fase excéntrica controlada (unos 2–3 s), sin rebotes y con recorrido completo.',
     prescription: { sets: '2–4', rir: 'RIR 0–3', rest: '1,5–3 min' },
+    setsNum: 3,
+    restSec: 120,
     keys: [
       'La hipertrofia puede producirse en un rango amplio de repeticiones si las series se acercan al fallo.',
       'El volumen semanal (series efectivas por grupo muscular) es una de las variables más útiles para planificar.',
@@ -172,6 +176,8 @@ const GOALS = {
     load: 'Baja a moderada (aprox. 60–65 % de 1RM o menos)',
     tempo: 'Ritmo constante y controlado, con respiración regular.',
     prescription: { sets: '2–3', rir: 'RIR 1–4', rest: '30–90 s' },
+    setsNum: 3,
+    restSec: 60,
     keys: [
       'Los descansos cortos forman parte del estímulo: entrenan la tolerancia a la fatiga.',
       'Las repeticiones altas también pueden generar hipertrofia si las series son exigentes.',
@@ -643,3 +649,14 @@ const METHODS = [
     compare: { days: '5', frequency: '1×', duration: '45–75 min', complexity: 'Baja', bestFor: 'Sesiones enfocadas por músculo' }
   }
 ];
+
+/* Mensaje que se muestra al terminar cada entrenamiento */
+const NUTRITION_NOTE = {
+  title: 'Lo más importante es la alimentación',
+  text: 'Seguir una rutina por sí sola no hará aparecer resultados de forma mágica. El entrenamiento es la señal; la alimentación aporta la energía y los materiales para adaptarte. Sin comer bien, descansar y ser constante durante semanas y meses, el progreso se frena.',
+  points: [
+    'Proteína suficiente cada día (como referencia, alrededor de 1,6 g por kg de peso corporal).',
+    'Energía acorde a tu objetivo: un ligero superávit para ganar músculo, un déficit moderado para perder grasa.',
+    'Dormir bien y mantener la constancia: los resultados llegan con el tiempo.'
+  ]
+};

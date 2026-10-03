@@ -2,148 +2,115 @@
    FIT SPLIT · app.js
    ---------------------------------------------------------------------
    Punto de entrada de la aplicación:
-   - Enrutador basado en el hash de la URL (#/metodos/ppl/ppl6/lun/pecho)
-   - Renderizado de vistas y limpieza de la vista anterior
-   - Delegación de eventos (data-action)
-   - Navegación principal y menú móvil
-   - Actualización de la interfaz cuando cambia la selección guardada
+   - Enrutador basado en el hash de la URL (#/plan/metodo, #/entrenar...)
+   - Cabecera: botón de retroceso, Inicio y "Reanudar entrenamiento"
+   - Pregunta inicial: si el usuario no ha elegido objetivo, se le pide
+     antes de cualquier otra cosa
+   - Delegación de eventos (data-action) y actualización de la vista
+     cuando cambian los datos guardados
    ===================================================================== */
 
 (() => {
   'use strict';
 
   const app = document.getElementById('app');
-  const nav = document.getElementById('primary-nav');
-  const navToggle = document.getElementById('nav-toggle');
-  const badge = document.getElementById('nav-badge');
+  const backBtn = document.getElementById('back-btn');
+  const resumeBtn = document.getElementById('resume-btn');
+  const homeLink = document.getElementById('home-link');
   const BASE_TITLE = 'FIT SPLIT · Entiende tu entrenamiento. Entrena con propósito.';
 
   /* Tabla de rutas: expresión regular → función que crea la vista */
   const SEG = '([\\w-]+)';
   const routes = [
-    [/^\/?$/, () => Views.home()],
-    [/^\/metodos$/, () => Views.methods()],
-    [new RegExp(`^/metodos/${SEG}$`), m => Views.method({ id: m[1] })],
-    [new RegExp(`^/metodos/${SEG}/${SEG}$`), m => Views.method({ id: m[1], variant: m[2] })],
-    [new RegExp(`^/metodos/${SEG}/${SEG}/${SEG}$`), m => Views.session({ id: m[1], variant: m[2], day: m[3] })],
-    [new RegExp(`^/metodos/${SEG}/${SEG}/${SEG}/${SEG}$`), m => Views.session({ id: m[1], variant: m[2], day: m[3], group: m[4] })],
-    [/^\/ejercicios$/, (m, q) => Views.exercises(q)],
-    [new RegExp(`^/ejercicio/${SEG}$`), (m, q) => Views.exercise({ id: m[1] }, q)],
+    [/^\/$/, () => Views.home()],
+    [/^\/plan\/objetivo$/, () => Views.goalStep()],
+    [/^\/plan\/metodo$/, () => Views.methodStep()],
+    [/^\/plan\/frecuencia$/, () => Views.frequencyStep()],
+    [new RegExp(`^/plan/dia/${SEG}$`), m => Views.dayStep({ day: m[1] })],
+    [/^\/entrenar$/, () => Views.player()],
+    [/^\/entrenar\/fin$/, () => Views.finish()],
+    [/^\/ejercicios$/, () => Views.exercises()],
+    [new RegExp(`^/ejercicio/${SEG}$`), m => Views.exercise({ id: m[1] })],
     [/^\/aprende$/, () => Views.learn()],
     [new RegExp(`^/aprende/${SEG}$`), m => Views.topic({ id: m[1] })],
-    [/^\/mi-entrenamiento$/, (m, q) => Views.myWorkout(q)],
-    [/^\/sobre$/, () => Views.about()]
+    [/^\/sobre$/, () => Views.about()],
+    // Direcciones de la versión anterior
+    [/^\/metodos(\/.*)?$/, () => ({ redirect: '#/plan/metodo' })],
+    [/^\/mi-entrenamiento$/, () => ({ redirect: '#/plan/frecuencia' })]
   ];
 
-  /* Sección del menú activa según la ruta */
-  const NAV_SECTIONS = { '': 'inicio', metodos: 'metodos', ejercicios: 'ejercicios', ejercicio: 'ejercicios', aprende: 'aprende', 'mi-entrenamiento': 'mi-entrenamiento', sobre: 'sobre' };
-
-  let current = null;   // { view, cleanup, path }
+  let current = null;     // { view, cleanup, path }
   let firstRender = true;
+  let depth = 0;          // pasos de navegación dentro de la aplicación
+  let replacing = false;  // una redirección no cuenta como paso
 
   function parseHash() {
     const raw = decodeURIComponent(location.hash.replace(/^#/, '')) || '/';
-    const [path, qs = ''] = raw.split('?');
-    return { path: path.replace(/\/+$/, '') || '/', query: Object.fromEntries(new URLSearchParams(qs)) };
+    const [path] = raw.split('?');
+    return path.replace(/\/+$/, '') || '/';
   }
 
-  function resolveView(path, query) {
+  function resolveView(path) {
+    // Antes de todo: preguntar qué quiere conseguir el usuario
+    if (!WorkoutStore.isOnboarded() && (path === '/' || path.startsWith('/plan/') || path.startsWith('/entrenar'))) {
+      if (path !== '/plan/objetivo') return { redirect: '#/plan/objetivo' };
+    }
     for (const [re, factory] of routes) {
       const match = path.match(re);
-      if (match) return factory(match, query);
+      if (match) return factory(match);
     }
     return Views.notFound();
   }
 
-  /* Dibuja la vista actual. soft = true conserva scroll y foco (re-render por cambios de datos) */
-  function render({ soft = false } = {}) {
-    const { path, query } = parseHash();
+  function render() {
+    const path = parseHash();
     let view;
     try {
-      view = resolveView(path, query);
+      view = resolveView(path);
     } catch (err) {
       console.error(err);
       view = Views.notFound();
     }
     if (view.redirect) {
+      replacing = true;
       location.replace(view.redirect);
       return;
     }
-
-    const focusKey = soft && document.activeElement && document.activeElement.dataset
-      ? document.activeElement.dataset.focus : null;
-    const scrollY = window.scrollY;
-    const sameScope = !soft && current && view.scrollKey && current.view.scrollKey === view.scrollKey;
-
+    const dlg = document.getElementById('dialog');
+    if (dlg.open) dlg.close();
     if (current && current.cleanup) current.cleanup();
     app.innerHTML = view.html;
-    app.classList.toggle('view-enter', !soft && !sameScope);
+    app.classList.remove('view-enter');
+    void app.offsetWidth;
+    app.classList.add('view-enter');
     document.title = view.title ? `${view.title} · FIT SPLIT` : BASE_TITLE;
-
     const cleanup = view.mount ? view.mount(app) : null;
     current = { view, cleanup, path };
-    updateNav(path, query);
-    closeMenu();
-
-    if (soft || sameScope) {
-      window.scrollTo(0, scrollY);
-      if (focusKey) {
-        const el = app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`);
-        if (el && !el.disabled) el.focus({ preventScroll: true });
-      }
-      if (sameScope && view.focusTarget) {
-        const target = app.querySelector(view.focusTarget);
-        if (target) target.focus({ preventScroll: true });
-      }
-    } else {
-      window.scrollTo(0, 0);
-      // Lleva el foco al título para lectores de pantalla (excepto en la primera carga)
-      if (!firstRender) {
-        const h1 = app.querySelector('h1');
-        if (h1) h1.focus({ preventScroll: true });
-      }
+    updateHeader(path);
+    window.scrollTo(0, 0);
+    if (!firstRender) {
+      const h1 = app.querySelector('h1');
+      if (h1) h1.focus({ preventScroll: true });
     }
     firstRender = false;
   }
+  Views.setRenderer(render);
 
-  function updateNav(path, query = {}) {
-    let section = NAV_SECTIONS[path.split('/')[1] || ''] || '';
-    // Un ejercicio abierto desde una sesión pertenece al recorrido de Métodos
-    if (section === 'ejercicios' && query.m) section = 'metodos';
-    nav.querySelectorAll('a[data-nav]').forEach(a => {
-      if (a.dataset.nav === section) a.setAttribute('aria-current', 'page');
-      else a.removeAttribute('aria-current');
-    });
+  /* Cabecera: retroceso, Inicio y botón animado de reanudar */
+  function updateHeader(path) {
+    backBtn.hidden = path === '/' && depth === 0;
+    homeLink.toggleAttribute('aria-current', path === '/');
+    if (path === '/') homeLink.setAttribute('aria-current', 'page');
+    const active = WorkoutStore.getActive();
+    resumeBtn.hidden = !active || path === '/entrenar';
   }
 
-  function updateBadge() {
-    const n = WorkoutStore.totalCount();
-    badge.textContent = n;
-    badge.hidden = n === 0;
-    badge.setAttribute('aria-label', `${n} ejercicios seleccionados`);
-  }
-
-  /* ----------------------------- Menú móvil ----------------------------- */
-  function closeMenu() {
-    document.body.classList.remove('menu-open');
-    navToggle.setAttribute('aria-expanded', 'false');
-    navToggle.setAttribute('aria-label', 'Abrir menú');
-  }
-  navToggle.addEventListener('click', () => {
-    const open = !document.body.classList.contains('menu-open');
-    document.body.classList.toggle('menu-open', open);
-    navToggle.setAttribute('aria-expanded', String(open));
-    navToggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+  backBtn.addEventListener('click', () => {
+    if (depth > 0) history.back();
+    else location.hash = '#/';
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.body.classList.contains('menu-open')) {
-      closeMenu();
-      navToggle.focus();
-    }
-  });
-  nav.addEventListener('click', e => { if (e.target.closest('a')) closeMenu(); });
 
-  /* ------------------------ Delegación de acciones ------------------------ */
+  /* Delegación de acciones: primero la vista actual, después las globales */
   app.addEventListener('click', e => {
     const el = e.target.closest('[data-action]');
     if (!el || !app.contains(el) || el.disabled) return;
@@ -151,19 +118,30 @@
     if (handler) {
       e.preventDefault();
       handler(el, e);
+    } else if (el.dataset.action === 'open-exercise') {
+      e.preventDefault();
+      Views.openExercise(el.dataset.ex);
     }
   });
 
-  /* Cuando cambia la selección: actualización parcial o re-render suave */
+  /* Cambios en los datos: actualización parcial o nuevo dibujado */
   WorkoutStore.subscribe(() => {
-    updateBadge();
     if (!current) return;
+    updateHeader(current.path);
     if (current.view.update) current.view.update(app);
-    else if (current.view.reactive) render({ soft: true });
+    else if (current.view.reactive) {
+      const y = window.scrollY;
+      render();
+      window.scrollTo(0, y);
+    }
   });
 
-  window.addEventListener('hashchange', () => render());
+  window.addEventListener('hashchange', () => {
+    if (replacing) replacing = false;
+    else depth += 1;
+    render();
+  });
+  window.addEventListener('popstate', () => { depth = Math.max(0, depth - 2); });
   document.getElementById('year').textContent = new Date().getFullYear();
-  updateBadge();
   render();
 })();

@@ -2,72 +2,110 @@
    FIT SPLIT · views.js
    ---------------------------------------------------------------------
    Vistas de la aplicación. Cada vista es una función que devuelve:
-     title    título de la pestaña
+     title    título de la pestaña del navegador
      html     contenido de la página
      mount    (opcional) se ejecuta tras insertar el HTML; puede devolver
-              una función de limpieza (por ejemplo, detener animaciones)
-     actions  (opcional) manejadores para los elementos con data-action
-     update   (opcional) actualización parcial cuando cambia la selección
-     reactive (opcional) si es true, la vista se vuelve a dibujar al
-              cambiar la selección guardada
-   El enrutador (app.js) decide qué vista mostrar según la URL.
+              una función de limpieza (detener animaciones, temporizadores)
+     actions  (opcional) manejadores de los elementos con data-action
+     update   (opcional) actualización parcial cuando cambian los datos:
+              cambia solo lo necesario, sin recargar ni mover la página
+     redirect (opcional) ruta a la que hay que ir en su lugar
+
+   Recorrido principal (planificación paso a paso):
+     #/plan/objetivo → #/plan/metodo → #/plan/frecuencia → #/plan/dia/:d
+     → #/entrenar → #/entrenar/fin
    ===================================================================== */
 
 const Views = (() => {
   'use strict';
-  const { esc, icon } = UI;
+  const { esc, icon, GOAL_ICONS } = UI;
 
   const STEP_TITLES = {
-    prep: 'Preparación',
-    start: 'Posición inicial',
-    ecc: 'Fase excéntrica',
-    turn: 'Punto de transición',
-    con: 'Fase concéntrica',
-    end: 'Finalización'
+    prep: 'Preparación', start: 'Posición inicial', ecc: 'Fase excéntrica',
+    turn: 'Punto de transición', con: 'Fase concéntrica', end: 'Finalización'
   };
   const PHASE_TYPES = { start: 'Inicio', ecc: 'Excéntrica', turn: 'Transición', con: 'Concéntrica', end: 'Final' };
-  const GOAL_ICONS = { fuerza: 'bolt', hipertrofia: 'growth', resistencia: 'repeat' };
-  const GOAL_TOPICS = { fuerza: 'fuerza', hipertrofia: 'hipertrofia', resistencia: 'resistencia-muscular' };
   const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const go = hash => { location.hash = hash; };
 
-  const sessionHref = (m, v, d, g) => `#/metodos/${m}/${v}/${d}${g ? '/' + g : ''}`;
-  const scrollToId = id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-    el.setAttribute('tabindex', '-1');
-    el.focus({ preventScroll: true });
-  };
+  /* El enrutador registra aquí su función de dibujado */
+  let rerender = () => {};
+  const setRenderer = fn => { rerender = fn; };
 
-  /* Sección con encabezado estándar */
-  function sectionHead({ eyebrow, title, text, link, id }) {
-    return `<div class="section-head">
-      <div>
-        ${eyebrow ? `<p class="eyebrow">${esc(eyebrow)}</p>` : ''}
-        <h2${id ? ` id="${id}"` : ''}>${esc(title)}</h2>
-        ${text ? `<p class="section-text">${esc(text)}</p>` : ''}
-      </div>
-      ${link || ''}
-    </div>`;
+  /* Plan actual (método + variante) con sus objetos de datos */
+  function currentPlan() {
+    const p = WorkoutStore.getPlan();
+    if (!p) return null;
+    const method = Planner.method(p.m);
+    const variant = Planner.variant(method, p.v);
+    return variant ? { m: p.m, v: p.v, method, variant } : null;
   }
 
-  /* Tarjetas de objetivo (portada) */
-  function goalCards() {
-    const current = WorkoutStore.getGoal();
-    return GOAL_ORDER.map(id => {
-      const g = GOALS[id];
-      const active = id === current;
-      return `<div class="goal-card goal-${id}${active ? ' is-active' : ''}">
-        <button type="button" class="goal-main" data-action="set-goal" data-goal="${id}" aria-pressed="${active}" data-focus="goal-${id}">
-          <span class="goal-icon">${icon(GOAL_ICONS[id])}</span>
-          <span class="goal-name">${esc(g.name)}</span>
-          <span class="goal-tag">${esc(g.tagline)}</span>
-          <span class="goal-reps mono">${esc(g.reps)}</span>
-          <span class="goal-state">${active ? icon('check') + 'Tu objetivo actual' : 'Elegir como objetivo'}</span>
-        </button>
-        <a class="goal-more" href="#/aprende/${GOAL_TOPICS[id]}">Aprender sobre ${esc(g.name.toLowerCase())} ${icon('arrow-right')}</a>
-      </div>`;
-    }).join('');
+  /* =====================================================================
+     PASOS DE LA PLANIFICACIÓN
+     ===================================================================== */
+  const STEPS = [
+    { id: 'objetivo', label: 'Objetivo' },
+    { id: 'metodo', label: 'Método' },
+    { id: 'frecuencia', label: 'Frecuencia' },
+    { id: 'dia', label: 'Ejercicios' },
+    { id: 'entrenar', label: 'Entrenar' }
+  ];
+
+  function planStepper(current) {
+    const plan = currentPlan();
+    const onboarded = WorkoutStore.isOnboarded();
+    const ci = STEPS.findIndex(s => s.id === current);
+    const info = {
+      objetivo: { value: onboarded ? GOALS[WorkoutStore.getGoal()].name : '', href: '#/plan/objetivo' },
+      metodo: { value: plan ? plan.method.name : '', href: onboarded ? '#/plan/metodo' : null },
+      frecuencia: { value: plan ? plan.variant.name : '', href: plan ? '#/plan/frecuencia' : null },
+      dia: { value: '', href: null },
+      entrenar: { value: '', href: WorkoutStore.getActive() ? '#/entrenar' : null }
+    };
+    return `<nav class="stepper" aria-label="Pasos de la planificación"><ol>
+      ${STEPS.map((s, i) => {
+        const st = i < ci ? 'is-done' : i === ci ? 'is-current' : '';
+        const inner = `<span class="step-num">${i < ci ? icon('check') : i + 1}</span>
+          <span class="step-text"><span class="step-label">${s.label}</span>${info[s.id].value ? `<small>${esc(info[s.id].value)}</small>` : ''}</span>`;
+        return `<li class="${st}">${info[s.id].href && i !== ci
+          ? `<a href="${info[s.id].href}">${inner}</a>`
+          : `<span${i === ci ? ' aria-current="step"' : ''}>${inner}</span>`}</li>`;
+      }).join('')}
+    </ol></nav>`;
+  }
+
+  /* =====================================================================
+     DETALLE DE EJERCICIO (página y ventana emergente)
+     ===================================================================== */
+  function stepsHtml(ex) {
+    const order = ['prep', ...Animations.phases(ex).map(p => p.key)];
+    return `<ol class="steps">${order.map((k, i) => `<li class="step" data-phase="${k}">
+      <span class="step-n mono">${i + 1}</span>
+      <div><h4>${STEP_TITLES[k]}</h4><p>${esc(ex.steps[k])}</p></div></li>`).join('')}</ol>`;
+  }
+
+  function goalPanel(ex, goalId) {
+    const g = GOALS[goalId];
+    const fits = ex.goals.includes(goalId);
+    const reasons = {
+      fuerza: 'En ejercicios de aislamiento, las cargas muy altas suelen ser poco prácticas y más exigentes para las articulaciones. Es más habitual usar rangos moderados.',
+      hipertrofia: 'Puede usarse, pero otros ejercicios permiten acercarse al fallo con más seguridad.',
+      resistencia: 'Con series muy largas, la técnica de este ejercicio tiende a degradarse con la fatiga.'
+    };
+    return `<div class="goal-panel goal-${goalId}">
+      ${fits ? '' : `<p class="callout callout-warn">${icon('alert')}<span>${esc(reasons[goalId])}</span></p>`}
+      <dl class="rx-grid">
+        <div class="rx-main"><dt>Repeticiones orientativas</dt><dd class="mono">${esc(Planner.repsFor(ex, goalId))}</dd></div>
+        <div><dt>Series</dt><dd>${esc(g.prescription.sets)} por ejercicio</dd></div>
+        <div><dt>Esfuerzo</dt><dd>${esc(g.prescription.rir)}</dd></div>
+        <div><dt>Descanso</dt><dd>${esc(g.prescription.rest)}</dd></div>
+        <div class="rx-wide"><dt>Carga</dt><dd>${esc(g.load)}</dd></div>
+        <div class="rx-wide"><dt>Ritmo</dt><dd>${esc(g.tempo)}</dd></div>
+      </dl>
+      <p class="callout">${icon('info')}<span>${esc(g.caution)}</span></p>
+      ${UI.repScale(goalId)}
+    </div>`;
   }
 
   /* Diagrama: de la carga a la adaptación */
@@ -81,934 +119,852 @@ const Views = (() => {
   function tensionFlow(compact = false) {
     return `<div class="flow${compact ? ' flow-compact' : ''}">
       <ol class="flow-steps">${FLOW_STEPS.map(([t, d, ic], i) => `
-        <li class="flow-step" style="--i:${i}">
-          <span class="flow-icon">${icon(ic)}</span>
-          <span class="flow-text"><strong>${t}</strong>${compact ? '' : `<span>${d}</span>`}</span>
-        </li>`).join('')}
+        <li class="flow-step" style="--i:${i}"><span class="flow-icon">${icon(ic)}</span>
+          <span class="flow-text"><strong>${t}</strong>${compact ? '' : `<span>${d}</span>`}</span></li>`).join('')}
       </ol>
       ${compact ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-action="replay-flow">${icon('restart')}<span>Ver la secuencia</span></button>`}
     </div>`;
   }
 
-  /* =====================================================================
-     DIÁLOGO: añadir un ejercicio a una sesión (desde el catálogo)
-     ===================================================================== */
-  function openAddDialog(ex) {
-    // Todas las combinaciones método/variante/día/grupo donde encaja el ejercicio
-    const options = [];
-    for (const m of METHODS) {
-      for (const v of m.variants) {
-        for (const d of Planner.trainingDays(v)) {
-          for (const g of Planner.groupsOf(Planner.sessionFor(v, d.id))) {
-            if (ex.groups.includes(g.id)) options.push({ m, v, d, g });
-          }
-        }
-      }
-    }
-    const plans = [...new Map(options.map(o => [`${o.m.id}|${o.v.id}`, o])).values()];
-    // Por defecto, el método donde el usuario ya tiene más ejercicios
-    const counts = {};
-    WorkoutStore.plans().forEach(p => { counts[`${p.m}|${p.v}`] = (counts[`${p.m}|${p.v}`] || 0) + 1; });
-    const defaultPlan = plans.slice().sort((a, b) =>
-      (counts[`${b.m.id}|${b.v.id}`] || 0) - (counts[`${a.m.id}|${a.v.id}`] || 0))[0];
+  /* Tarjeta de animación con controles. Los controles usan data-exd para
+     funcionar igual dentro de la página o de una ventana emergente. */
+  function animCard(ex) {
+    const phases = Animations.phases(ex);
+    return `<div class="anim-card">
+      <div class="anim-head">
+        <span class="anim-view">${icon('eye')}${Animations.viewLabel(ex)}</span>
+        <span class="anim-legend"><span><i class="lg-p"></i>Trabaja</span><span><i class="lg-s"></i>Ayuda</span><span><i class="lg-b"></i>Otros músculos</span></span>
+      </div>
+      <div class="anim-stage" data-stage></div>
+      <div class="anim-controls">
+        <button type="button" class="btn btn-primary btn-sm" data-exd="toggle">${icon('pause')}<span>Pausar</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" data-exd="restart">${icon('restart')}<span>Reiniciar</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" data-exd="speed" aria-label="Velocidad: normal">${icon('speed')}<span>1×</span></button>
+      </div>
+      <ol class="phase-track" aria-label="Fases del movimiento">
+        ${phases.map((ph, i) => `<li><button type="button" class="phase-chip" data-exd="seek" data-phase="${ph.key}">
+          <span class="phase-num mono">${i + 1}</span><span class="phase-name">${esc(ph.label)}</span><span class="phase-type">${PHASE_TYPES[ph.key]}</span>
+        </button></li>`).join('')}
+      </ol>
+    </div>`;
+  }
 
-    const dlg = UI.openDialog(`
-      <h2 class="dialog-title">Añadir ${esc(ex.name)}</h2>
-      <p class="dialog-text">Elige el método, el día y el grupo muscular de la sesión.</p>
-      <form class="dialog-form" id="add-form" novalidate>
-        <div class="field"><label for="add-plan">Método</label>
-          <select id="add-plan">${plans.map(o => `<option value="${o.m.id}|${o.v.id}"${o === defaultPlan ? ' selected' : ''}>${esc(o.m.name)} · ${esc(o.v.name)}</option>`).join('')}</select></div>
-        <div class="field"><label for="add-day">Día</label><select id="add-day"></select></div>
-        <div class="field" id="add-group-field"><label for="add-group">Grupo muscular</label><select id="add-group"></select></div>
-        <p class="dialog-status" id="add-status" aria-live="polite"></p>
-        <div class="dialog-actions">
-          <button type="button" class="btn btn-ghost" data-dialog-close>Cancelar</button>
-          <button type="submit" class="btn btn-primary">${icon('plus')}<span>Añadir</span></button>
-        </div>
-      </form>`);
-
-    const $ = sel => dlg.querySelector(sel);
-    const current = () => {
-      const [mId, vId] = $('#add-plan').value.split('|');
-      return options.find(o => o.m.id === mId && o.v.id === vId && o.d.id === $('#add-day').value && o.g.id === $('#add-group').value);
+  /* Conecta la animación y sus controles dentro de un contenedor */
+  function mountAnim(scope, ex) {
+    const toggleBtn = scope.querySelector('[data-exd="toggle"]');
+    const setToggle = playing => {
+      toggleBtn.innerHTML = playing ? `${icon('pause')}<span>Pausar</span>` : `${icon('play')}<span>Reproducir</span>`;
+      toggleBtn.setAttribute('aria-label', playing ? 'Pausar animación' : 'Reproducir animación');
     };
-    const refreshStatus = () => {
-      const o = current();
-      if (!o) return;
-      const list = WorkoutStore.getGroup(o.m.id, o.v.id, o.d.id, o.g.id);
-      const status = $('#add-status');
-      status.className = 'dialog-status';
-      if (list.includes(ex.id)) {
-        status.textContent = 'Este ejercicio ya está en esa sesión.';
-        status.classList.add('is-warn');
-      } else if (list.length >= o.g.max) {
-        status.textContent = `${o.g.group.name} ya tiene ${o.g.max} de ${o.g.max} ejercicios. Quita uno desde la sesión para añadir este.`;
-        status.classList.add('is-warn');
-      } else {
-        status.textContent = `${o.g.group.name}: ${list.length} de ${o.g.max} ejercicios seleccionados en ese día.`;
-      }
-    };
-    const fillGroups = () => {
-      const [mId, vId] = $('#add-plan').value.split('|');
-      const groups = options.filter(o => o.m.id === mId && o.v.id === vId && o.d.id === $('#add-day').value);
-      $('#add-group').innerHTML = groups.map(o => `<option value="${o.g.id}">${esc(o.g.group.name)}</option>`).join('');
-      $('#add-group-field').hidden = groups.length < 2;
-      refreshStatus();
-    };
-    const fillDays = () => {
-      const [mId, vId] = $('#add-plan').value.split('|');
-      const days = [...new Map(options.filter(o => o.m.id === mId && o.v.id === vId).map(o => [o.d.id, o])).values()];
-      $('#add-day').innerHTML = days.map(o => `<option value="${o.d.id}">${o.d.name} · ${esc(Planner.sessionFor(o.v, o.d.id).name)}</option>`).join('');
-      fillGroups();
-    };
-    $('#add-plan').addEventListener('change', fillDays);
-    $('#add-day').addEventListener('change', fillGroups);
-    $('#add-group').addEventListener('change', refreshStatus);
-    fillDays();
-
-    $('#add-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const o = current();
-      if (!o) return;
-      if (WorkoutStore.getGroup(o.m.id, o.v.id, o.d.id, o.g.id).includes(ex.id)) { refreshStatus(); return; }
-      const result = WorkoutStore.toggle(o.m.id, o.v.id, o.d.id, o.g.id, ex.id, o.g.max);
-      if (result === 'added') {
-        dlg.close();
-        UI.toast(`${ex.name} añadido a ${o.d.name} · ${Planner.sessionFor(o.v, o.d.id).name} · ${o.g.group.name}`);
-      } else {
-        refreshStatus();
-      }
+    const animator = Animations.create(scope.querySelector('[data-stage]'), ex, {
+      onPhase: ph => {
+        scope.querySelectorAll('.phase-chip').forEach(c => c.setAttribute('aria-current', String(c.dataset.phase === ph.key)));
+        scope.querySelectorAll('.step').forEach(s => s.classList.toggle('is-active', s.dataset.phase === ph.key));
+      },
+      onState: setToggle
     });
+    setToggle(false);
+    if (!prefersReducedMotion()) animator.play();
+    let speed = 1;
+    const onClick = e => {
+      const el = e.target.closest('[data-exd]');
+      if (!el || !scope.contains(el)) return;
+      const act = el.dataset.exd;
+      if (act === 'toggle') animator.toggle();
+      if (act === 'restart') animator.restart();
+      if (act === 'seek') animator.seek(el.dataset.phase);
+      if (act === 'speed') {
+        speed = speed === 1 ? 0.5 : 1;
+        animator.setSpeed(speed);
+        el.querySelector('span').textContent = speed === 1 ? '1×' : '0,5×';
+        el.setAttribute('aria-label', `Velocidad: ${speed === 1 ? 'normal' : 'lenta'}`);
+      }
+    };
+    scope.addEventListener('click', onClick);
+    return () => { animator.destroy(); scope.removeEventListener('click', onClick); };
+  }
+
+  function selectButton(ex, c) {
+    const list = WorkoutStore.getGroup(c.m, c.v, c.d, c.g);
+    const sel = list.includes(ex.id);
+    const full = !sel && list.length >= c.max;
+    const g = MUSCLE_GROUPS[c.g].name.toLowerCase();
+    return `<button type="button" class="btn btn-select btn-block${sel ? ' is-selected' : ''}" data-exd="select" aria-pressed="${sel}" ${full ? 'disabled' : ''}>
+        ${sel ? icon('check') + `<span>Elegido para ${esc(g)} · pulsa para quitar</span>` : icon('plus') + `<span>Elegir para ${esc(g)}</span>`}
+      </button>
+      <p class="muted small">${list.length} de ${c.max} ejercicios elegidos en este grupo${full ? '. Quita uno para elegir este.' : '.'}</p>`;
+  }
+
+  function exerciseDetail(ex, { groupId, headingTag = 'h2', selectCtx } = {}) {
+    const tone = groupId ? UI.toneOfGroup(groupId) : UI.toneOfExercise(ex);
+    const rec = groupId && Planner.isRecommended(ex.id, groupId);
+    const goal = WorkoutStore.getGoal();
+    const info = `<dl class="info-list">
+      <div><dt>Músculo principal</dt><dd>${esc(ex.primary.join(', '))}</dd></div>
+      <div><dt>Músculos secundarios</dt><dd>${ex.secondary.length ? esc(ex.secondary.join(', ')) : '—'}</dd></div>
+      <div><dt>Equipamiento</dt><dd>${esc(ex.equipmentLabel)}</dd></div>
+      <div><dt>Dificultad</dt><dd>${UI.difficulty(ex.difficulty)}</dd></div>
+      <div><dt>Tipo de movimiento</dt><dd>${esc(ex.movement)}</dd></div>
+      <div><dt>Categoría</dt><dd>${ex.category === 'compuesto' ? 'Compuesto (varias articulaciones)' : 'Aislamiento (una articulación)'}</dd></div>
+    </dl>
+    ${rec ? `<p class="callout callout-rec">${icon('star')}<span><strong>Recomendado.</strong> ${esc(RECOMMENDED[groupId].why)}</span></p>` : ''}`;
+    const goalTab = `<div class="seg seg-sm" role="radiogroup" aria-label="Objetivo">
+        ${GOAL_ORDER.map(g => `<button type="button" role="radio" class="seg-btn" aria-checked="${g === goal}" data-exd-goal="${g}">${icon(GOAL_ICONS[g])}${esc(UI.goalName(g))}</button>`).join('')}
+      </div><div data-goal-panel>${goalPanel(ex, goal)}</div>`;
+    const tension = `<div class="tension-grid">
+        <div><h4>Dónde es mayor la demanda</h4><p>${esc(ex.tension.where)}</p></div>
+        <div><h4>Cómo aprovecharla</h4><p>${esc(ex.tension.cue)}</p></div>
+      </div>
+      ${tensionFlow(true)}
+      <p class="callout">${icon('info')}<span>Más peso no garantiza un mejor estímulo: si la técnica, el recorrido o el control empeoran, la tensión sobre el músculo objetivo puede disminuir.</span></p>`;
+
+    return `<div class="exd tone-${tone}">
+      ${animCard(ex)}
+      <div class="exd-info">
+        <div class="exd-head">
+          <div class="tag-row">
+            ${ex.groups.map(g => `<span class="chip chip-static tone-${UI.toneOfGroup(g)}"><span class="dot"></span>${esc(MUSCLE_GROUPS[g].name)}</span>`).join('')}
+            ${rec ? `<span class="rec-badge rec-inline">${icon('star')}Recomendado</span>` : ''}
+          </div>
+          <${headingTag} class="exd-title" tabindex="-1">${esc(ex.name)}</${headingTag}>
+          <p class="exd-desc">${esc(ex.description)}</p>
+        </div>
+        ${UI.tabs('exd', [
+          { id: 'resumen', label: 'Resumen', html: info },
+          { id: 'tecnica', label: 'Técnica', html: stepsHtml(ex) },
+          { id: 'errores', label: 'Errores', html: `<ul class="list-x">${ex.mistakes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` },
+          { id: 'consejos', label: 'Consejos', html: `<ul class="list-check">${ex.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` },
+          { id: 'objetivo', label: 'Tu objetivo', html: goalTab },
+          { id: 'tension', label: 'Tensión mecánica', html: tension }
+        ])}
+        ${selectCtx ? `<div class="exd-select" data-exd-select>${selectButton(ex, selectCtx)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* Conecta pestaña de objetivo y botón de selección del detalle */
+  function mountDetail(scope, ex, selectCtx) {
+    const stopAnim = mountAnim(scope, ex);
+    const onClick = e => {
+      const g = e.target.closest('[data-exd-goal]');
+      if (g && scope.contains(g)) {
+        WorkoutStore.setGoal(g.dataset.exdGoal);
+        scope.querySelectorAll('[data-exd-goal]').forEach(b => b.setAttribute('aria-checked', String(b === g)));
+        scope.querySelector('[data-goal-panel]').innerHTML = goalPanel(ex, g.dataset.exdGoal);
+      }
+      const s = e.target.closest('[data-exd="select"]');
+      if (s && selectCtx && !s.disabled) {
+        const r = WorkoutStore.toggle(selectCtx.m, selectCtx.v, selectCtx.d, selectCtx.g, ex.id, selectCtx.max);
+        if (r === 'full') UI.toast('Has alcanzado el máximo para este grupo.', 'error');
+        scope.querySelector('[data-exd-select]').innerHTML = selectButton(ex, selectCtx);
+      }
+    };
+    scope.addEventListener('click', onClick);
+    return () => { stopAnim(); scope.removeEventListener('click', onClick); };
+  }
+
+  /* Abre el detalle de un ejercicio en una ventana emergente */
+  function openExercise(exId, opts = {}) {
+    const ex = EXERCISE_INDEX[exId];
+    if (!ex) return;
+    let cleanup = null;
+    const dlg = UI.openDialog(`
+      <button type="button" class="icon-btn dialog-close" data-dialog-close aria-label="Cerrar">${icon('x')}</button>
+      ${exerciseDetail(ex, opts)}`, { wide: true, label: ex.name, onClose: () => cleanup && cleanup() });
+    cleanup = mountDetail(dlg.querySelector('.exd'), ex, opts.selectCtx);
   }
 
   /* =====================================================================
-     INICIO
+     INICIO (panel de control)
      ===================================================================== */
+  function resumeCard() {
+    const a = WorkoutStore.getActive();
+    if (!a) return '';
+    const variant = Planner.variant(Planner.method(a.m), a.v);
+    const s = Planner.sessionFor(variant, a.d);
+    const day = DAYS.find(d => d.id === a.d);
+    const ex = EXERCISE_INDEX[a.items[a.index].id];
+    return `<section class="resume-card tone-${s.tone}" aria-labelledby="resume-title">
+      <div class="resume-info">
+        <p class="eyebrow"><span class="live-dot"></span>Entrenamiento en curso</p>
+        <h2 id="resume-title">${day.name} · <span class="tone-text">${esc(s.name)}</span></h2>
+        <p class="muted">Ejercicio ${a.index + 1} de ${a.items.length}: <strong>${esc(ex.name)}</strong></p>
+        ${UI.progress(a.index, a.items.length, 'Progreso del entrenamiento')}
+      </div>
+      <div class="resume-actions">
+        <a class="btn btn-primary btn-lg btn-pulse" href="#/entrenar">${icon('play')}<span>Continuar entrenamiento</span></a>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="abandon">Descartar</button>
+      </div>
+    </section>`;
+  }
+
   function home() {
-    const demos = [
-      { id: 'press-banca', tone: 'push', label: 'Push' },
-      { id: 'dominadas', tone: 'pull', label: 'Pull' },
-      { id: 'sentadilla', tone: 'legs', label: 'Legs' }
-    ];
-    let animator = null;
+    const plan = currentPlan();
+    const goal = GOALS[WorkoutStore.getGoal()];
+    const topic = id => LEARN_TOPICS.find(t => t.id === id);
+    const stepCard = (n, title, value, text, href, cta, extra = '') => `
+      <li class="step-card${value ? ' is-set' : ''}">
+        <span class="step-card-num mono">${n}</span>
+        <div class="step-card-body">
+          <p class="step-card-title">${title}</p>
+          <p class="step-card-value">${value ? esc(value) : '<span class="muted">Sin definir</span>'}</p>
+          <p class="step-card-text">${text}</p>
+          ${extra}
+        </div>
+        <a class="btn btn-ghost btn-sm" href="${href}">${cta}${icon('arrow-right')}</a>
+      </li>`;
 
+    const nextHref = !plan ? '#/plan/metodo' : '#/plan/frecuencia';
     const html = `
-      <section class="hero">
-        <div class="container hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">${icon('split')}Plataforma educativa de entrenamiento de fuerza</p>
-            <h1 class="hero-title" tabindex="-1">Entiende tu entrenamiento. <span>Entrena con propósito.</span></h1>
-            <p class="hero-lead">Explora métodos de entrenamiento, aprende cómo ejecutar cada ejercicio y construye sesiones adaptadas a tus objetivos.</p>
-            <div class="btn-row">
-              <a class="btn btn-primary btn-lg" href="#/metodos">Explorar métodos ${icon('arrow-right')}</a>
-              <a class="btn btn-secondary btn-lg" href="#/ejercicios">Explorar ejercicios</a>
-            </div>
-            <dl class="hero-stats">
-              <div><dt>Métodos</dt><dd>${METHODS.length}</dd></div>
-              <div><dt>Ejercicios animados</dt><dd>${EXERCISES.length}</dd></div>
-              <div><dt>Temas para aprender</dt><dd>${LEARN_TOPICS.length}</dd></div>
-            </dl>
-          </div>
-          <div class="hero-demo tone-push" id="hero-demo">
-            <div class="demo-head">
-              <span class="demo-label"><span class="live-dot"></span>Animación en vivo</span>
-              <div class="seg seg-sm" role="group" aria-label="Elegir ejemplo">
-                ${demos.map((d, i) => `<button type="button" class="seg-btn" data-action="hero-demo" data-ex="${d.id}" data-tone="${d.tone}" aria-pressed="${i === 0}">${d.label}</button>`).join('')}
+      <section class="dash">
+        <div class="container">
+          ${resumeCard()}
+          <div class="dash-grid">
+            <div class="dash-main">
+              <div class="dash-hero">
+                <h1 tabindex="-1">Entiende tu entrenamiento. <span>Entrena con propósito.</span></h1>
+                <p class="lead">Planifica en tres pasos, aprende cómo se hace cada ejercicio y entrena guiado, ejercicio por ejercicio.</p>
               </div>
+              <section class="plan-box" aria-labelledby="plan-title">
+                <div class="box-head">
+                  <h2 id="plan-title">Tu planificación, paso a paso</h2>
+                  <a class="btn btn-primary" href="${nextHref}">${plan ? 'Elegir ejercicios y entrenar' : 'Continuar planificación'}${icon('arrow-right')}</a>
+                </div>
+                <ol class="step-cards">
+                  ${stepCard(1, 'Definir objetivo', goal.name, esc(goal.tagline), '#/plan/objetivo', 'Cambiar')}
+                  ${stepCard(2, 'Método de entrenamiento', plan && plan.method.name, plan ? esc(plan.method.tagline) : 'Cómo repartes los músculos en la semana.', '#/plan/metodo', plan ? 'Cambiar' : 'Elegir')}
+                  ${stepCard(3, 'Frecuencia de entrenamiento', plan && plan.variant.name, plan ? esc(plan.variant.description) : 'Cuántos días entrenas por semana.', plan ? '#/plan/frecuencia' : '#/plan/metodo', plan ? 'Ver semana' : 'Elegir', plan ? UI.weekStrip(plan.variant) : '')}
+                </ol>
+              </section>
             </div>
-            <div class="demo-stage" id="hero-stage"></div>
-            <div class="demo-foot">
-              <div>
-                <p class="demo-ex" id="hero-ex">${esc(EXERCISE_INDEX[demos[0].id].name)}</p>
-                <p class="demo-phase" id="hero-phase">Posición inicial</p>
-              </div>
-              <a class="btn btn-ghost btn-sm" id="hero-link" href="#/ejercicio/${demos[0].id}">Ver ficha ${icon('arrow-right')}</a>
-            </div>
+            <aside class="dash-side">
+              <section class="side-box" aria-labelledby="fund-title">
+                <h2 id="fund-title">Fundamentos importantes</h2>
+                <div class="topic-list">
+                  ${FUNDAMENTALS.map((id, i) => UI.topicCard(topic(id), { featured: i === 0 })).join('')}
+                </div>
+              </section>
+              <section class="side-box" aria-labelledby="explore-title">
+                <h2 id="explore-title">Explora</h2>
+                <div class="explore-grid">
+                  <a class="explore-tile" href="#/ejercicios">${icon('dumbbell')}<span><strong>Ejercicios</strong><small>${EXERCISES.length} con animación</small></span></a>
+                  <a class="explore-tile" href="#/aprende">${icon('book')}<span><strong>Aprende</strong><small>${LEARN_TOPICS.length} temas</small></span></a>
+                  <a class="explore-tile" href="#/sobre">${icon('info')}<span><strong>Sobre FIT SPLIT</strong><small>El proyecto</small></span></a>
+                </div>
+              </section>
+            </aside>
           </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="container">
-          ${sectionHead({
-            eyebrow: 'Métodos', title: 'Métodos de entrenamiento',
-            text: 'Cada método reparte el trabajo de la semana de una forma distinta. Elige uno para ver sus días, sus sesiones y sus ejercicios.',
-            link: `<a class="text-link" href="#/metodos">Ver todos y compararlos ${icon('arrow-right')}</a>`
-          })}
-          <div class="card-grid card-grid-methods">${METHODS.map(UI.methodCard).join('')}</div>
-        </div>
-      </section>
-
-      <section class="section section-alt" id="goals-section">
-        <div class="container">
-          ${sectionHead({
-            eyebrow: 'Objetivo', title: '¿Qué quieres conseguir?',
-            text: 'Tu objetivo ajusta las recomendaciones de repeticiones, esfuerzo y descanso que verás en cada ejercicio.'
-          })}
-          <div class="card-grid card-grid-3" id="goal-cards">${goalCards()}</div>
-          <div class="scale-card">
-            <div class="scale-card-head">
-              <h3>Los rangos se superponen</h3>
-              <p>Las repeticiones son una orientación, no una regla. La adaptación depende también del esfuerzo, el volumen, la carga, la técnica y la recuperación.</p>
-            </div>
-            <div id="home-scale">${UI.repScale(WorkoutStore.getGoal())}</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Cómo funciona', title: 'De la idea a tu sesión en seis pasos' })}
-          <ol class="flow-path">
-            ${[
-              ['Elige un método', 'Push Pull Legs, Upper / Lower, Full Body…', 'layers'],
-              ['Elige el día', 'Cada día tiene su tipo de sesión.', 'calendar'],
-              ['Elige el músculo', 'Pecho, espalda, cuádriceps…', 'body'],
-              ['Explora ejercicios', 'Animación, técnica y errores frecuentes.', 'eye'],
-              ['Define tu objetivo', 'Fuerza, hipertrofia o resistencia.', 'target'],
-              ['Construye tu sesión', 'Hasta 3 ejercicios por grupo.', 'list']
-            ].map(([t, d, ic], i) => `<li class="flow-path-step"><span class="flow-path-num mono">${String(i + 1).padStart(2, '0')}</span>${icon(ic)}<strong>${t}</strong><span>${d}</span></li>`).join('')}
-          </ol>
-          <div class="btn-row center"><a class="btn btn-primary" href="#/metodos/ppl">Empezar con Push Pull Legs ${icon('arrow-right')}</a></div>
-        </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="container">
-          ${sectionHead({
-            eyebrow: 'Aprende', title: 'Aprende los fundamentos',
-            text: 'Conceptos clave explicados con claridad y sin afirmaciones absolutas.',
-            link: `<a class="text-link" href="#/aprende">Ir a la biblioteca ${icon('arrow-right')}</a>`
-          })}
-          <div class="card-grid card-grid-3">${FUNDAMENTALS.map(id => UI.topicCard(LEARN_TOPICS.find(t => t.id === id))).join('')}</div>
         </div>
       </section>`;
-
-    function startDemo(root, exId) {
-      if (animator) animator.destroy();
-      const ex = EXERCISE_INDEX[exId];
-      animator = Animations.create(root.querySelector('#hero-stage'), ex, {
-        onPhase: ph => { const el = root.querySelector('#hero-phase'); if (el) el.textContent = ph.label; }
-      });
-      root.querySelector('#hero-ex').textContent = ex.name;
-      root.querySelector('#hero-link').setAttribute('href', `#/ejercicio/${ex.id}`);
-      if (!prefersReducedMotion()) animator.play();
-    }
 
     return {
       title: '',
       html,
-      mount(root) {
-        startDemo(root, demos[0].id);
-        return () => animator && animator.destroy();
-      },
-      update(root) {
-        root.querySelector('#goal-cards').innerHTML = goalCards();
-        root.querySelector('#home-scale').innerHTML = UI.repScale(WorkoutStore.getGoal());
-      },
+      reactive: true,
       actions: {
-        'hero-demo'(el) {
-          const root = el.closest('.hero');
-          root.querySelectorAll('[data-action="hero-demo"]').forEach(b => b.setAttribute('aria-pressed', String(b === el)));
-          const demo = root.querySelector('#hero-demo');
-          demo.className = `hero-demo tone-${el.dataset.tone}`;
-          startDemo(root, el.dataset.ex);
-        },
-        'set-goal'(el) {
+        async abandon() {
+          const ok = await UI.confirm({ title: 'Descartar entrenamiento', text: 'Se perderá el progreso del entrenamiento en curso. Tu selección de ejercicios se mantiene.', confirmLabel: 'Descartar', danger: true });
+          if (ok) { WorkoutStore.abandonWorkout(); UI.toast('Entrenamiento descartado.'); }
+        }
+      }
+    };
+  }
+
+  /* =====================================================================
+     PASO 1 · OBJETIVO
+     ===================================================================== */
+  function goalStep() {
+    const onboarded = WorkoutStore.isOnboarded();
+    const current = WorkoutStore.getGoal();
+    const repsShort = { fuerza: '≈ 1–6', hipertrofia: '≈ 6–15', resistencia: '15–30+' };
+    const html = `
+      <section class="step-page">
+        <div class="container">
+          ${planStepper('objetivo')}
+          <div class="step-head">
+            ${onboarded ? '' : `<p class="eyebrow">Bienvenido a FIT SPLIT</p>`}
+            <h1 tabindex="-1">¿Qué quieres conseguir?</h1>
+            <p class="lead">${onboarded ? 'Puedes cambiar tu objetivo cuando quieras.' : 'Antes de empezar, cuéntanos tu objetivo.'} Con él ajustamos repeticiones, series, esfuerzo y descanso en cada ejercicio.</p>
+          </div>
+          <div class="goal-options">
+            ${GOAL_ORDER.map(id => {
+              const g = GOALS[id];
+              const sel = onboarded && id === current;
+              return `<button type="button" class="goal-option goal-${id}${sel ? ' is-selected' : ''}" data-action="choose-goal" data-goal="${id}" aria-pressed="${sel}">
+                <span class="goal-icon">${icon(GOAL_ICONS[id])}</span>
+                <span class="goal-name">${esc(g.name)}</span>
+                <span class="goal-tag">${esc(g.tagline)}</span>
+                <span class="goal-facts">
+                  <span><small>Repeticiones</small><b class="mono">${repsShort[id]}</b></span>
+                  <span><small>Descanso</small><b class="mono">${esc(g.prescription.rest)}</b></span>
+                </span>
+                <span class="goal-cta">${sel ? icon('check') + 'Tu objetivo' : 'Elegir' + icon('arrow-right')}</span>
+              </button>`;
+            }).join('')}
+          </div>
+          <p class="callout">${icon('info')}<span>Los rangos de repeticiones son orientativos y se superponen. El resultado también depende del esfuerzo, el volumen, la técnica, la recuperación y, sobre todo, de la alimentación.</span></p>
+        </div>
+      </section>`;
+    return {
+      title: 'Tu objetivo',
+      html,
+      actions: {
+        'choose-goal'(el) {
           WorkoutStore.setGoal(el.dataset.goal);
-          UI.toast(`Objetivo: ${GOALS[el.dataset.goal].name}. Las recomendaciones de cada ejercicio se adaptan a él.`);
+          UI.toast(`Objetivo: ${GOALS[el.dataset.goal].name}.`);
+          go(currentPlan() ? '#/plan/frecuencia' : '#/plan/metodo');
         }
       }
     };
   }
 
   /* =====================================================================
-     MÉTODOS (lista y comparativa)
+     PASO 2 · MÉTODO
      ===================================================================== */
-  function methods() {
-    const html = `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow">Métodos</p>
-          <h1 tabindex="-1">Métodos de entrenamiento</h1>
-          <p class="lead">Un método organiza qué músculos entrenas cada día. Ninguno es universalmente mejor: la elección depende de tu disponibilidad, tu experiencia, tu recuperación y tus preferencias.</p>
+  let viewingMethod = null;
+
+  function methodDetail(m) {
+    const plan = currentPlan();
+    const chosen = plan && plan.m === m.id;
+    const sessionTypes = [...new Set(m.variants.flatMap(v => Object.values(v.schedule)))].map(id => SESSION_TYPES[id]);
+    return `<div class="method-detail-inner tone-${m.tone}">
+      <div class="md-head">
+        <div>
+          <p class="eyebrow">${esc(m.short)}</p>
+          <h2>${esc(m.name)}</h2>
+          <p class="muted">${esc(m.tagline)}</p>
         </div>
-      </section>
-      <section class="section">
-        <div class="container method-list">
-          ${METHODS.map(m => `
-            <article class="method-row tone-${m.tone}">
-              <div class="method-row-main">
-                <span class="method-abbr">${esc(m.short)}</span>
-                <h2><a href="#/metodos/${m.id}">${esc(m.name)}</a></h2>
-                <p>${esc(m.tagline)}</p>
-                <div class="chip-row" aria-label="Variantes">${m.variants.map(v => `<a class="chip" href="#/metodos/${m.id}/${v.id}">${icon('calendar')}${esc(v.name)}</a>`).join('')}</div>
-              </div>
-              <dl class="stat-list">
-                <div><dt>Días por semana</dt><dd>${esc(m.stats.days)}</dd></div>
-                <div><dt>Frecuencia por grupo</dt><dd>${esc(m.stats.frequency)}</dd></div>
-                <div><dt>Duración por sesión</dt><dd>${esc(m.stats.duration)}</dd></div>
-                <div><dt>Nivel orientativo</dt><dd>${esc(m.stats.level)}</dd></div>
-              </dl>
-              <div class="method-row-side">
-                ${UI.weekStrip(m.variants[0])}
-                <a class="btn btn-secondary" href="#/metodos/${m.id}">Ver método ${icon('arrow-right')}</a>
-              </div>
-            </article>`).join('')}
-        </div>
-      </section>
-      <section class="section section-alt">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Comparativa', title: 'Comparativa rápida', text: 'Una vista general para orientarte. Los valores son habituales, no obligatorios.' })}
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Tabla comparativa de métodos">
-            <table class="compare">
-              <thead><tr><th scope="col">Método</th><th scope="col">Días / semana</th><th scope="col">Frecuencia por grupo</th><th scope="col">Duración</th><th scope="col">Complejidad</th><th scope="col">Destaca por</th></tr></thead>
-              <tbody>${METHODS.map(m => `<tr class="tone-${m.tone}">
-                <th scope="row"><a href="#/metodos/${m.id}"><span class="dot"></span>${esc(m.name)}</a></th>
-                <td class="mono">${esc(m.compare.days)}</td><td class="mono">${esc(m.compare.frequency)}</td>
-                <td>${esc(m.compare.duration)}</td><td>${esc(m.compare.complexity)}</td><td>${esc(m.compare.bestFor)}</td></tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-          <p class="callout">${icon('info')}<span>Cuando el volumen semanal es similar, las diferencias de resultados entre métodos suelen ser pequeñas. El mejor método suele ser el que puedes mantener con constancia.</span></p>
-        </div>
-      </section>`;
-    return { title: 'Métodos', html };
-  }
-
-  /* =====================================================================
-     DETALLE DE UN MÉTODO
-     ===================================================================== */
-  function method({ id, variant: variantId }) {
-    const m = Planner.method(id);
-    if (!m) return notFound();
-    const v = variantId ? Planner.variant(m, variantId) : m.variants[0];
-    if (!v) return notFound();
-
-    const freq = Planner.weeklyFrequency(v);
-    const maxFreq = Math.max(3, ...Object.values(freq));
-    const sessionTypes = [...new Set(Object.values(v.schedule))].map(sid => SESSION_TYPES[sid]);
-    const navItems = [
-      ['que-es', '¿Qué es?'], ['como-funciona', 'Cómo funciona'], ['ventajas', 'Ventajas'],
-      ['para-quien', 'Para quién'], ['semana', 'Semana'], ['frecuencia', 'Frecuencia'], ['preguntas', 'Preguntas']
-    ];
-
-    const calendar = DAYS.map(day => {
-      const s = Planner.sessionFor(v, day.id);
-      if (s.id === 'rest') {
-        return `<div class="day-tile is-rest">
-          <span class="day-name">${day.name}</span>
-          <span class="day-session">${icon('moon')}Descanso</span>
-          <span class="day-groups">Recuperación</span>
-        </div>`;
-      }
-      const p = Planner.sessionProgress(m.id, v.id, day.id);
-      return `<a class="day-tile tone-${s.tone}${p.complete ? ' is-complete' : ''}" href="${sessionHref(m.id, v.id, day.id)}">
-        <span class="day-name">${day.name}</span>
-        <span class="day-session">${esc(s.name)}</span>
-        <span class="day-groups">${p.perGroup.map(g => esc(g.group.short || g.group.name)).join(' · ')}</span>
-        <span class="day-progress">${UI.progress(p.done, p.total, `${day.name}: ${p.done} ejercicios`)}<small>${p.complete ? icon('check') + 'Sesión lista' : UI.plural(p.done, 'ejercicio', 'ejercicios')}</small></span>
-        <span class="day-cta">${p.done ? 'Editar sesión' : 'Construir sesión'}${icon('arrow-right')}</span>
-      </a>`;
-    }).join('');
-
-    const html = `
-      <section class="page-head tone-${m.tone} method-head">
-        <div class="container">
-          ${UI.breadcrumb([{ label: 'Métodos', href: '#/metodos' }, { label: m.name }])}
-          <div class="method-head-grid">
-            <div>
-              <p class="eyebrow">Método · ${esc(m.short)}</p>
-              <h1 tabindex="-1">${esc(m.name)}</h1>
-              <p class="lead">${esc(m.tagline)}</p>
-            </div>
-            <dl class="stat-list stat-list-head">
-              <div><dt>Días por semana</dt><dd>${esc(m.stats.days)}</dd></div>
-              <div><dt>Frecuencia por grupo</dt><dd>${esc(m.stats.frequency)}</dd></div>
-              <div><dt>Duración por sesión</dt><dd>${esc(m.stats.duration)}</dd></div>
-              <div><dt>Nivel orientativo</dt><dd>${esc(m.stats.level)}</dd></div>
-            </dl>
-          </div>
-          <nav class="local-nav" aria-label="Secciones de esta página">
-            ${navItems.map(([target, label]) => `<button type="button" data-action="scroll-to" data-target="${target}">${label}</button>`).join('')}
-          </nav>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="container content-grid">
-          <div class="prose" id="que-es">
-            <h2>¿Qué es?</h2>
-            ${m.what.map(p => `<p>${esc(p)}</p>`).join('')}
-          </div>
-          <div class="prose" id="como-funciona">
-            <h2>¿Cómo funciona?</h2>
-            ${m.how.map(p => `<p>${esc(p)}</p>`).join('')}
-          </div>
-        </div>
-        <div class="container">
-          <div class="session-types">
-            ${sessionTypes.map(s => `<div class="session-type tone-${s.tone}">
-              <p class="session-type-name">${esc(s.name)} <span>${esc(s.subtitle)}</span></p>
-              <p>${esc(s.description)}</p>
-              <div class="chip-row">${Planner.groupsOf(s).map(g => `<span class="chip chip-static">${esc(g.group.name)}</span>`).join('')}</div>
-            </div>`).join('')}
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-alt" id="ventajas">
-        <div class="container two-col">
-          <div class="pros-card">
-            <h2>${icon('check')}Ventajas</h2>
-            <ul class="list-check">${m.advantages.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
-          </div>
-          <div class="cons-card">
-            <h2>${icon('alert')}Desventajas</h2>
-            <ul class="list-x">${m.disadvantages.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="para-quien">
-        <div class="container content-grid">
-          <div class="prose">
-            <h2>¿Para quién puede ser útil?</h2>
-            ${m.forWhom.map(p => `<p>${esc(p)}</p>`).join('')}
-          </div>
-          <div class="aside-card">
-            <h3>Puede no ser la mejor opción si…</h3>
-            <ul class="list-dot">${m.notIdeal.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-alt" id="semana">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Estructura semanal', title: 'Tu semana con ' + m.name, text: 'Elige una variante y entra en un día para construir esa sesión.' })}
-          ${m.variants.length > 1 ? `<div class="seg variant-tabs" role="group" aria-label="Variantes del método">
-            ${m.variants.map(x => `<a class="seg-btn" href="#/metodos/${m.id}/${x.id}" aria-current="${x.id === v.id ? 'true' : 'false'}">${esc(x.name)}</a>`).join('')}
-          </div>` : ''}
-          <p class="variant-desc">${icon('info')}${esc(v.description)}</p>
-          <div class="week-calendar">${calendar}</div>
-        </div>
-      </section>
-
-      <section class="section" id="frecuencia">
-        <div class="container content-grid">
-          <div class="prose">
-            <h2>Frecuencia por grupo muscular</h2>
-            <p>Número de sesiones por semana en las que trabaja cada grupo con la variante <strong>${esc(v.name)}</strong>. Entrenar un músculo más veces permite repartir su volumen semanal en sesiones menos largas.</p>
-            <p class="muted">Muchos músculos también reciben trabajo indirecto: por ejemplo, el tríceps participa en los empujes de pecho.</p>
-          </div>
-          <div class="freq-chart">
-            ${GROUP_ORDER.filter(g => freq[g]).map(g => `<div class="freq-row tone-${UI.toneOfGroup(g)}">
-              <span class="freq-name">${esc(MUSCLE_GROUPS[g].name)}</span>
-              <span class="freq-bar"><span style="width:${(freq[g] / maxFreq) * 100}%"></span></span>
-              <span class="freq-val mono">${freq[g]}×</span>
-            </div>`).join('')}
-            <p class="freq-caption">Veces por semana</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="container two-col">
-          <div class="aside-card">
-            <h3>${icon('moon')}Recuperación</h3>
-            <ul class="list-dot">${m.recovery.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
-          </div>
-          <div class="aside-card">
-            <h3>${icon('stairs')}Cómo progresar</h3>
-            <ul class="list-dot">${m.progression.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="preguntas">
-        <div class="container narrow">
-          <h2>Preguntas frecuentes</h2>
-          <div class="faq-list">${m.faq.map(f => `<details class="faq"><summary>${esc(f.q)}${icon('chevron-down')}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>
-        </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="container">
-          <h2 class="h3">Otros métodos</h2>
-          <div class="chip-row">${METHODS.filter(x => x.id !== m.id).map(x => `<a class="chip chip-lg tone-${x.tone}" href="#/metodos/${x.id}"><span class="dot"></span>${esc(x.name)}</a>`).join('')}</div>
-        </div>
-      </section>`;
-
-    return {
-      title: m.name,
-      html,
-      reactive: true,
-      actions: { 'scroll-to': el => scrollToId(el.dataset.target) }
-    };
-  }
-
-  /* =====================================================================
-     SESIÓN DE UN DÍA (selección de ejercicios)
-     ===================================================================== */
-  function session({ id, variant: variantId, day: dayId, group: groupId }) {
-    const m = Planner.method(id);
-    const v = Planner.variant(m, variantId);
-    if (!v || !v.schedule[dayId]) return notFound();
-    const day = DAYS.find(d => d.id === dayId);
-    const p = Planner.sessionProgress(m.id, v.id, dayId);
-    const s = p.session;
-    if (!groupId) return { redirect: sessionHref(m.id, v.id, dayId, p.perGroup[0].id) };
-    const g = p.perGroup.find(x => x.id === groupId);
-    if (!g) return notFound();
-
-    const ctx = { m: m.id, v: v.id, d: dayId, g: g.id };
-    const selected = WorkoutStore.getGroup(m.id, v.id, dayId, g.id);
-    const exercises = Planner.exercisesFor(g.id);
-    const idx = p.perGroup.indexOf(g);
-    const next = p.perGroup[idx + 1];
-    const readyGroups = p.perGroup.filter(x => x.ready).length;
-
-    // Otros días con la misma sesión y ejercicios elegidos (para copiar)
-    const copySources = !p.done ? Planner.trainingDays(v).filter(d =>
-      d.id !== dayId && v.schedule[d.id] === s.id && Object.keys(WorkoutStore.getSelection(m.id, v.id, d.id)).length) : [];
-
-    const limitText = g.full
-      ? `Has alcanzado el máximo de ${g.max} ejercicios para ${g.group.name.toLowerCase()}. Quita uno para elegir otro.`
-      : `Elige hasta ${g.max} ejercicios.${g.min > 0 ? ` Necesitas al menos ${g.min} para completar el grupo.` : ''}`;
-
-    const html = `
-      <section class="page-head tone-${s.tone} session-head">
-        <div class="container">
-          ${UI.breadcrumb([
-            { label: 'Métodos', href: '#/metodos' },
-            { label: m.name, href: `#/metodos/${m.id}/${v.id}` },
-            { label: `${day.name} · ${s.name}` }
-          ])}
-          <div class="session-head-grid">
-            <div>
-              <p class="eyebrow">${esc(m.name)} · ${esc(v.name)}</p>
-              <h1 class="session-title" tabindex="-1"><span>${day.name}</span><span class="sep" aria-hidden="true">·</span><span class="tone-text">${esc(s.name)}</span></h1>
-              <p class="lead">${esc(s.description)}</p>
-              <p class="muscles-line"><span>Músculos principales</span>${p.perGroup.map(x => `<span class="chip chip-static tone-${UI.toneOfGroup(x.id)}"><span class="dot"></span>${esc(x.group.name)}</span>`).join('')}</p>
-            </div>
-            <div class="session-progress-card">
-              <span class="label">Progreso de la sesión</span>
-              <p class="big-num mono"><strong>${p.done}</strong> / ${p.total}</p>
-              ${UI.progress(p.done, p.total, 'Ejercicios seleccionados en la sesión')}
-              <span class="muted">${readyGroups} de ${p.perGroup.length} grupos listos</span>
-            </div>
-          </div>
-          ${Planner.trainingDays(v).length > 1 ? `<nav class="day-switch" aria-label="Otros días de ${esc(v.name)}">
-            ${Planner.trainingDays(v).map(d => {
-              const ds = Planner.sessionFor(v, d.id);
-              return `<a class="day-chip tone-${ds.tone}" href="${sessionHref(m.id, v.id, d.id)}" aria-current="${d.id === dayId ? 'page' : 'false'}"><b>${d.short}</b>${esc(ds.name)}</a>`;
-            }).join('')}
-          </nav>` : ''}
-        </div>
-      </section>
-
-      <section class="section session-body">
-        <div class="container session-layout">
-          <div class="session-main">
-            <div class="group-picker" id="group-picker">
-              ${p.perGroup.map(x => `<a class="group-card tone-${UI.toneOfGroup(x.id)}${x.id === g.id ? ' is-current' : ''}" href="${sessionHref(m.id, v.id, dayId, x.id)}" aria-current="${x.id === g.id ? 'true' : 'false'}">
-                <span class="group-card-top"><span class="group-name">${esc(x.group.name)}</span>
-                <span class="group-state ${x.full ? 'is-full' : x.ready ? 'is-ready' : ''}">${x.full ? icon('check') + 'Completo' : x.ready ? icon('check') + 'Listo' : 'Pendiente'}</span></span>
-                <span class="group-count mono">${x.count} / ${x.max}</span>
-                ${UI.progress(x.count, x.max, `${x.group.name}: ${x.count} de ${x.max}`)}
-              </a>`).join('')}
-            </div>
-
-            <div class="group-panel tone-${UI.toneOfGroup(g.id)}" id="group-panel">
-              <div class="group-panel-head">
-                <div>
-                  <h2 id="group-title" tabindex="-1">${esc(g.group.name)}</h2>
-                  <p>${esc(g.group.role)}</p>
-                </div>
-                <div class="counter${g.full ? ' is-full' : ''}" aria-live="polite">
-                  <p><strong class="mono">${g.count} / ${g.max}</strong> ejercicios seleccionados</p>
-                  ${UI.progress(g.count, g.max, `Ejercicios seleccionados de ${g.group.name}`)}
-                </div>
-              </div>
-              <p class="limit-note${g.full ? ' is-full' : ''}" id="limit-note">${icon(g.full ? 'check' : 'info')}<span>${esc(limitText)}</span></p>
-              ${s.hint ? `<p class="hint">${icon('bolt')}<span>${esc(s.hint)}</span></p>` : ''}
-              <div class="ex-grid">
-                ${exercises.map((ex, i) => UI.exerciseCard(ex, {
-                  ctx, index: i,
-                  selected: selected.includes(ex.id),
-                  disabled: g.full && !selected.includes(ex.id)
-                })).join('')}
-              </div>
-              ${next && g.ready ? `<div class="group-next"><a class="btn btn-secondary" href="${sessionHref(m.id, v.id, dayId, next.id)}">Siguiente grupo: ${esc(next.group.name)} ${icon('arrow-right')}</a></div>` : ''}
-            </div>
-          </div>
-
-          <aside class="session-summary" aria-labelledby="summary-title">
-            <h2 id="summary-title">Tu sesión</h2>
-            <p class="summary-sub tone-${s.tone}"><span class="dot"></span>${day.name} · ${esc(s.name)}</p>
-            ${p.perGroup.map(x => {
-              const list = WorkoutStore.getGroup(m.id, v.id, dayId, x.id);
-              return `<div class="summary-group">
-                <h3>${esc(x.group.name)} <span class="mono">${x.count}/${x.max}</span></h3>
-                ${list.length ? `<ol>${list.map(exId => {
-                  const ex = EXERCISE_INDEX[exId];
-                  return `<li><a href="${UI.exerciseHref(ex, { ...ctx, g: x.id })}">${esc(ex.name)}</a>
-                    <button type="button" class="icon-btn" data-action="remove-exercise" data-g="${x.id}" data-ex="${ex.id}" aria-label="Quitar ${esc(ex.name)}">${icon('x')}</button></li>`;
-                }).join('')}</ol>` : '<p class="summary-empty">Sin ejercicios todavía</p>'}
-              </div>`;
-            }).join('')}
-            ${copySources.map(d => `<button type="button" class="btn btn-ghost btn-block" data-action="copy-session" data-from="${d.id}">${icon('copy')}<span>Copiar la selección del ${d.name.toLowerCase()}</span></button>`).join('')}
-            ${p.complete
-              ? `<a class="btn btn-primary btn-block" href="#/mi-entrenamiento${UI.query({ m: m.id, v: v.id, focus: dayId })}">Ver mi sesión ${icon('arrow-right')}</a>`
-              : `<p class="summary-hint">${icon('info')}<span>Elige al menos ${p.perGroup[0].min} ${p.perGroup[0].min === 1 ? 'ejercicio' : 'ejercicios'} en cada grupo para ver tu sesión.</span></p>`}
-            ${p.done ? `<button type="button" class="btn btn-ghost btn-block btn-danger-text" data-action="clear-session">${icon('trash')}<span>Limpiar sesión</span></button>` : ''}
-          </aside>
-        </div>
-      </section>`;
-
-    return {
-      title: `${day.name} · ${s.name} · ${g.group.name}`,
-      html,
-      reactive: true,
-      mount(root) {
-        // En móvil los grupos se desplazan en horizontal: centra el grupo actual
-        const picker = root.querySelector('#group-picker');
-        const cur = picker && picker.querySelector('.is-current');
-        if (cur && picker.scrollWidth > picker.clientWidth) {
-          picker.scrollLeft = cur.offsetLeft - (picker.clientWidth - cur.clientWidth) / 2;
-        }
-      },
-      scrollKey: `session:${m.id}/${v.id}/${dayId}`,
-      focusTarget: '#group-title',
-      actions: {
-        'toggle-exercise'(el) {
-          const before = Planner.sessionProgress(m.id, v.id, dayId);
-          const result = WorkoutStore.toggle(m.id, v.id, dayId, g.id, el.dataset.ex, g.max);
-          if (result === 'full') {
-            UI.toast(`Máximo de ${g.max} ejercicios para ${g.group.name.toLowerCase()}. Quita uno para cambiarlo.`, 'error');
-            return;
-          }
-          const after = Planner.sessionProgress(m.id, v.id, dayId);
-          const ga = after.perGroup.find(x => x.id === g.id);
-          if (after.complete && !before.complete) UI.toast('Sesión lista. Ya puedes ver tu sesión completa.');
-          else if (ga.full && result === 'added') UI.toast(`${g.group.name}: ${ga.count} / ${ga.max} ejercicios seleccionados.`);
-        },
-        'remove-exercise'(el) {
-          WorkoutStore.remove(m.id, v.id, dayId, el.dataset.g, el.dataset.ex);
-        },
-        'copy-session'(el) {
-          WorkoutStore.copySession(m.id, v.id, el.dataset.from, dayId);
-          UI.toast('Selección copiada. Puedes cambiarla cuando quieras.');
-        },
-        async 'clear-session'() {
-          const ok = await UI.confirm({
-            title: 'Limpiar sesión',
-            text: `Se quitarán todos los ejercicios del ${day.name.toLowerCase()} (${s.name}).`,
-            confirmLabel: 'Limpiar sesión', danger: true
-          });
-          if (ok) { WorkoutStore.clearSession(m.id, v.id, dayId); UI.toast('Sesión vaciada.'); }
-        }
-      }
-    };
-  }
-
-  /* =====================================================================
-     FICHA DE EJERCICIO
-     ===================================================================== */
-  function goalPanel(ex, goalId) {
-    const g = GOALS[goalId];
-    const fits = ex.goals.includes(goalId);
-    const reasons = {
-      fuerza: 'En ejercicios de aislamiento, las cargas muy altas suelen ser poco prácticas y más exigentes para las articulaciones. Es más habitual usarlos con rangos moderados y apoyar la fuerza con ejercicios compuestos.',
-      hipertrofia: 'Puede usarse, pero otros ejercicios permiten acercarse al fallo con más seguridad.',
-      resistencia: 'Con series muy largas, la técnica de este ejercicio tiende a degradarse con la fatiga. Elige otro ejercicio para este objetivo o usa rangos moderados.'
-    };
-    return `<div class="goal-panel goal-${goalId}">
-      <div class="goal-panel-head">
-        <span class="goal-icon">${icon(GOAL_ICONS[goalId])}</span>
-        <div><h3>${esc(g.name)}</h3><p>${esc(g.summary)}</p></div>
+        <button type="button" class="btn btn-primary" data-action="choose-method" data-m="${m.id}">${chosen ? 'Continuar con este método' : 'Elegir este método'}${icon('arrow-right')}</button>
       </div>
-      ${fits ? '' : `<p class="callout callout-warn">${icon('alert')}<span>${esc(reasons[goalId])}</span></p>`}
-      <dl class="rx-grid">
-        <div class="rx-main"><dt>${icon('repeat')}Repeticiones orientativas</dt><dd class="mono">${esc(Planner.repsFor(ex, goalId))}</dd></div>
-        <div><dt>${icon('layers')}Series</dt><dd>${esc(g.sets)}</dd></div>
-        <div><dt>${icon('flame')}Esfuerzo</dt><dd>${esc(g.effort)}</dd></div>
-        <div><dt>${icon('clock')}Descanso</dt><dd>${esc(g.rest)}</dd></div>
-        <div><dt>${icon('dumbbell')}Carga</dt><dd>${esc(g.load)}</dd></div>
-        <div><dt>${icon('speed')}Ritmo</dt><dd>${esc(g.tempo)}</dd></div>
+      <dl class="stat-row">
+        <div><dt>Días</dt><dd>${esc(m.stats.days)}</dd></div>
+        <div><dt>Frecuencia</dt><dd>${esc(m.stats.frequency)}</dd></div>
+        <div><dt>Duración</dt><dd>${esc(m.stats.duration)}</dd></div>
+        <div><dt>Nivel</dt><dd>${esc(m.stats.level)}</dd></div>
       </dl>
-      <ul class="list-check goal-keys">${g.keys.map(k => `<li>${esc(k)}</li>`).join('')}</ul>
-      <p class="callout">${icon('info')}<span>${esc(g.caution)}</span></p>
-      ${UI.repScale(goalId)}
+      ${UI.tabs('method-info', [
+        { id: 'que', label: 'Qué es', html: `${m.what.map(p => `<p>${esc(p)}</p>`).join('')}${m.how.map(p => `<p>${esc(p)}</p>`).join('')}
+          <div class="session-types">${sessionTypes.map(s => `<div class="session-type tone-${s.tone}"><strong>${esc(s.name)}</strong><span>${Planner.groupsOf(s).map(g => esc(g.group.name)).join(' · ')}</span></div>`).join('')}</div>` },
+        { id: 'pros', label: 'Ventajas y desventajas', html: `<div class="two-col">
+          <div><h4 class="h-ok">${icon('check')}Ventajas</h4><ul class="list-check">${m.advantages.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>
+          <div><h4 class="h-bad">${icon('alert')}Desventajas</h4><ul class="list-x">${m.disadvantages.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div></div>` },
+        { id: 'quien', label: 'Para quién', html: `${m.forWhom.map(p => `<p>${esc(p)}</p>`).join('')}
+          <h4>Puede no ser la mejor opción si…</h4><ul class="list-dot">${m.notIdeal.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` },
+        { id: 'faq', label: 'Preguntas', html: `<div class="faq-list">${m.faq.map(f => `<details class="faq"><summary>${esc(f.q)}${icon('chevron-down')}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>` },
+        { id: 'comparar', label: 'Comparar', html: `<div class="table-wrap" tabindex="0" role="region" aria-label="Comparativa de métodos"><table class="compare">
+          <thead><tr><th scope="col">Método</th><th scope="col">Días</th><th scope="col">Frecuencia</th><th scope="col">Duración</th><th scope="col">Destaca por</th></tr></thead>
+          <tbody>${METHODS.map(x => `<tr class="tone-${x.tone}${x.id === m.id ? ' is-current' : ''}"><th scope="row"><span class="dot"></span>${esc(x.name)}</th>
+            <td class="mono">${esc(x.compare.days)}</td><td class="mono">${esc(x.compare.frequency)}</td><td>${esc(x.compare.duration)}</td><td>${esc(x.compare.bestFor)}</td></tr>`).join('')}</tbody>
+          </table></div><p class="muted small">Con el mismo volumen semanal, las diferencias entre métodos suelen ser pequeñas. El mejor método suele ser el que puedes mantener.</p>` }
+      ])}
     </div>`;
   }
 
-  function exercise({ id }, q) {
-    const ex = EXERCISE_INDEX[id];
-    if (!ex) return notFound();
-    const vc = Planner.validContext(q);
-    const ctx = vc ? { m: q.m, v: q.v, d: q.d, g: q.g } : null;
-    const tone = ctx ? UI.toneOfGroup(ctx.g) : UI.toneOfExercise(ex);
-    const phases = Animations.phases(ex);
-    const stepOrder = ['prep', ...phases.map(p => p.key)];
-    const groupForRelated = ctx ? ctx.g : ex.groups[0];
-    const related = Planner.exercisesFor(groupForRelated).filter(e => e.id !== ex.id);
-    let animator = null;
-    let speedIdx = 1;
-    const SPEEDS = [0.5, 1];
-
-    function selectCard() {
-      if (ctx) {
-        const list = WorkoutStore.getGroup(ctx.m, ctx.v, ctx.d, ctx.g);
-        const selected = list.includes(ex.id);
-        const full = list.length >= vc.group.max;
-        return `<h2>Tu sesión</h2>
-          <p class="select-ctx tone-${vc.session.tone}"><span class="dot"></span>${vc.day.name} · ${esc(vc.session.name)} · ${esc(vc.group.group.name)}</p>
-          <div class="counter${full ? ' is-full' : ''}">
-            <p><strong class="mono">${list.length} / ${vc.group.max}</strong> ejercicios seleccionados</p>
-            ${UI.progress(list.length, vc.group.max, 'Ejercicios seleccionados en el grupo')}
-          </div>
-          <button type="button" class="btn btn-select btn-block${selected ? ' is-selected' : ''}" data-action="ctx-toggle" data-focus="ctx-toggle" aria-pressed="${selected}" ${full && !selected ? 'disabled' : ''}>
-            ${selected ? icon('check') + '<span>Seleccionado · pulsa para quitar</span>' : icon('plus') + '<span>Seleccionar ejercicio</span>'}
-          </button>
-          ${full && !selected ? `<p class="limit-note is-full">${icon('info')}<span>Ya tienes ${vc.group.max} ejercicios de ${esc(vc.group.group.name.toLowerCase())}. Quita uno en la sesión para añadir este.</span></p>` : ''}
-          <a class="btn btn-ghost btn-block" href="${sessionHref(ctx.m, ctx.v, ctx.d, ctx.g)}">${icon('arrow-left')}<span>Volver a ${esc(vc.group.group.name.toLowerCase())}</span></a>`;
-      }
-      const inPlans = WorkoutStore.plans().filter(p => Object.values(p.groups).some(ids => ids.includes(ex.id))).length;
-      return `<h2>Añádelo a tu entrenamiento</h2>
-        <p class="muted">Elige el método, el día y el grupo muscular donde quieres incluirlo.</p>
-        <button type="button" class="btn btn-primary btn-block" data-action="open-add" data-ex="${ex.id}" data-focus="open-add-main">${icon('plus')}<span>Añadir a una sesión</span></button>
-        ${inPlans ? `<p class="muted small">${icon('check')}Está en ${UI.plural(inPlans, 'de tus sesiones', 'de tus sesiones')}. <a href="#/mi-entrenamiento">Ver mi entrenamiento</a></p>` : ''}`;
-    }
-
-    const goal = WorkoutStore.getGoal();
-    const crumbs = ctx
-      ? [{ label: 'Métodos', href: '#/metodos' },
-         { label: vc.method.name, href: `#/metodos/${ctx.m}/${ctx.v}` },
-         { label: `${vc.day.name} · ${vc.session.name}`, href: sessionHref(ctx.m, ctx.v, ctx.d, ctx.g) },
-         { label: ex.name }]
-      : [{ label: 'Ejercicios', href: '#/ejercicios' }, { label: ex.name }];
-
+  function methodStep() {
+    if (!WorkoutStore.isOnboarded()) return { redirect: '#/plan/objetivo' };
+    const plan = currentPlan();
+    if (!viewingMethod || !Planner.method(viewingMethod)) viewingMethod = plan ? plan.m : METHODS[0].id;
     const html = `
-      <section class="page-head tone-${tone} ex-head">
+      <section class="step-page">
         <div class="container">
-          ${UI.breadcrumb(crumbs)}
-          <div class="tag-row">
-            ${ex.groups.map(gid => `<a class="chip tone-${UI.toneOfGroup(gid)}" href="#/ejercicios${UI.query({ grupo: gid })}"><span class="dot"></span>${esc(MUSCLE_GROUPS[gid].name)}</a>`).join('')}
-            <span class="tag">${esc(ex.movement)}</span>
+          ${planStepper('metodo')}
+          <div class="step-head">
+            <h1 tabindex="-1">Elige un método de entrenamiento</h1>
+            <p class="lead">Un método decide qué músculos entrenas cada día. Toca uno para ver cómo funciona; ninguno es el mejor para todo el mundo.</p>
           </div>
-          <h1 tabindex="-1">${esc(ex.name)}</h1>
-          <p class="lead">${esc(ex.description)}</p>
-        </div>
-      </section>
-
-      <section class="section ex-top">
-        <div class="container ex-layout">
-          <div class="anim-card tone-${tone}">
-            <div class="anim-head">
-              <span class="anim-view">${icon('eye')}${Animations.viewLabel(ex)}</span>
-              <span class="anim-legend"><span><i class="lg-p"></i>Principal</span><span><i class="lg-s"></i>Secundario</span></span>
+          <div class="method-picker">
+            <div class="method-options" role="group" aria-label="Métodos">
+              ${METHODS.map(m => `<button type="button" class="method-option tone-${m.tone}" data-action="view-method" data-m="${m.id}" aria-pressed="${m.id === viewingMethod}">
+                <span class="method-abbr">${esc(m.short)}</span>
+                <span class="mo-text"><strong>${esc(m.name)}</strong><small>${esc(m.stats.days)} · ${esc(m.stats.frequency)}</small></span>
+                ${plan && plan.m === m.id ? `<span class="mo-badge">${icon('check')}Elegido</span>` : ''}
+              </button>`).join('')}
             </div>
-            <div class="anim-stage" id="anim-stage"></div>
-            <div class="anim-controls">
-              <button type="button" class="btn btn-primary" data-action="anim-toggle" id="anim-toggle">${icon('play')}<span>Reproducir</span></button>
-              <button type="button" class="btn btn-ghost" data-action="anim-restart">${icon('restart')}<span>Reiniciar</span></button>
-              <button type="button" class="btn btn-ghost" data-action="anim-speed" id="anim-speed" aria-label="Velocidad de la animación: normal">${icon('speed')}<span>1×</span></button>
-            </div>
-            <ol class="phase-track" aria-label="Fases del movimiento">
-              ${phases.map((ph, i) => `<li><button type="button" class="phase-chip" data-action="anim-seek" data-phase="${ph.key}">
-                <span class="phase-num mono">${i + 1}</span><span class="phase-name">${esc(ph.label)}</span><span class="phase-type">${PHASE_TYPES[ph.key]}</span>
-              </button></li>`).join('')}
-            </ol>
-            <p class="sr-only" id="anim-status" aria-live="polite"></p>
+            <div class="method-detail" id="method-detail">${methodDetail(Planner.method(viewingMethod))}</div>
           </div>
-
-          <aside class="ex-aside">
-            <div class="info-card">
-              <h2>Información rápida</h2>
-              <dl class="info-list">
-                <div><dt>Músculo principal</dt><dd>${esc(ex.primary.join(', '))}</dd></div>
-                <div><dt>Músculos secundarios</dt><dd>${ex.secondary.length ? esc(ex.secondary.join(', ')) : '—'}</dd></div>
-                <div><dt>Equipamiento</dt><dd>${esc(ex.equipmentLabel)}</dd></div>
-                <div><dt>Dificultad</dt><dd>${UI.difficulty(ex.difficulty)}</dd></div>
-                <div><dt>Tipo de movimiento</dt><dd>${esc(ex.movement)}</dd></div>
-                <div><dt>Categoría</dt><dd>${ex.category === 'compuesto' ? 'Compuesto (varias articulaciones)' : 'Aislamiento (una articulación)'}</dd></div>
-              </dl>
-            </div>
-            <div class="select-card tone-${tone}" id="select-card">${selectCard()}</div>
-          </aside>
         </div>
-      </section>
-
-      <section class="section">
-        <div class="container ex-content">
-          <section class="block" aria-labelledby="h-tech">
-            <h2 id="h-tech">Cómo hacerlo</h2>
-            <p class="muted">Los pasos se resaltan mientras la animación avanza por cada fase.</p>
-            <ol class="steps" id="steps">
-              ${stepOrder.map((k, i) => `<li class="step" data-phase="${k}">
-                <span class="step-num mono">${i + 1}</span>
-                <div><h3>${STEP_TITLES[k]}</h3><p>${esc(ex.steps[k])}</p></div>
-              </li>`).join('')}
-            </ol>
-          </section>
-
-          <div class="two-col">
-            <section class="block cons-card" aria-labelledby="h-mistakes">
-              <h2 id="h-mistakes">${icon('alert')}Errores frecuentes</h2>
-              <ul class="list-x">${ex.mistakes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-            </section>
-            <section class="block pros-card" aria-labelledby="h-tips">
-              <h2 id="h-tips">${icon('check')}Recomendaciones</h2>
-              <ul class="list-check">${ex.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-            </section>
-          </div>
-
-          <section class="block goal-block" aria-labelledby="h-goal">
-            <h2 id="h-goal">Elige tu objetivo</h2>
-            <p class="muted">Las recomendaciones cambian según lo que quieras priorizar. Tu elección se guarda y se aplica también al resto de ejercicios.</p>
-            <div class="seg" role="radiogroup" aria-labelledby="h-goal" id="goal-seg">
-              ${GOAL_ORDER.map(gid => `<button type="button" role="radio" class="seg-btn" aria-checked="${gid === goal}" data-action="ex-goal" data-goal="${gid}">${icon(GOAL_ICONS[gid])}${esc(UI.goalName(gid))}</button>`).join('')}
-            </div>
-            <div id="goal-panel">${goalPanel(ex, goal)}</div>
-          </section>
-
-          <section class="block tension-block" aria-labelledby="h-tension">
-            <p class="eyebrow">Concepto clave</p>
-            <h2 id="h-tension">Tensión mecánica</h2>
-            <div class="tension-grid">
-              <div><h3>Dónde es mayor la demanda</h3><p>${esc(ex.tension.where)}</p></div>
-              <div><h3>Cómo aprovecharla</h3><p>${esc(ex.tension.cue)}</p></div>
-            </div>
-            ${tensionFlow(true)}
-            <p class="callout">${icon('info')}<span>Más peso no garantiza un mejor estímulo: si la técnica, el recorrido o el control empeoran, la tensión sobre el músculo objetivo puede disminuir.</span></p>
-            <a class="text-link" href="#/aprende/tension-mecanica">Leer más sobre tensión mecánica ${icon('arrow-right')}</a>
-          </section>
-        </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="container">
-          ${sectionHead({
-            title: `Más ejercicios de ${MUSCLE_GROUPS[groupForRelated].name.toLowerCase()}`,
-            text: ctx ? 'Puedes seleccionarlos directamente para tu sesión.' : ''
-          })}
-          <div class="ex-grid ex-grid-tight">${related.map(e => {
-            if (!ctx) return UI.exerciseCard(e, { showAdd: true });
-            const list = WorkoutStore.getGroup(ctx.m, ctx.v, ctx.d, ctx.g);
-            return UI.exerciseCard(e, { ctx, selected: list.includes(e.id), disabled: list.length >= vc.group.max && !list.includes(e.id) });
-          }).join('')}</div>
-        </div>
-      </section>
-      <p class="disclaimer container">${icon('shield')}<span>Información educativa y general. No sustituye la valoración de un profesional sanitario o del ejercicio. Si tienes una lesión o una condición médica, consulta antes de entrenar.</span></p>`;
-
-    function setToggle(root, playing) {
-      const btn = root.querySelector('#anim-toggle');
-      if (!btn) return;
-      btn.innerHTML = playing ? `${icon('pause')}<span>Pausar</span>` : `${icon('play')}<span>Reproducir</span>`;
-      btn.setAttribute('aria-label', playing ? 'Pausar animación' : 'Reproducir animación');
-    }
-
+      </section>`;
     return {
-      title: ex.name,
+      title: 'Elige un método',
       html,
-      mount(root) {
-        animator = Animations.create(root.querySelector('#anim-stage'), ex, {
-          onPhase: ph => {
-            root.querySelectorAll('.phase-chip').forEach(c => c.setAttribute('aria-current', String(c.dataset.phase === ph.key)));
-            root.querySelectorAll('.step').forEach(s => s.classList.toggle('is-active', s.dataset.phase === ph.key));
-          },
-          onState: playing => setToggle(root, playing)
-        });
-        if (!prefersReducedMotion()) animator.play();
-        return () => animator && animator.destroy();
-      },
-      update(root) {
-        root.querySelector('#select-card').innerHTML = selectCard();
-        const goalNow = WorkoutStore.getGoal();
-        root.querySelectorAll('#goal-seg .seg-btn').forEach(b => b.setAttribute('aria-checked', String(b.dataset.goal === goalNow)));
-        root.querySelector('#goal-panel').innerHTML = goalPanel(ex, goalNow);
-        if (ctx) {
-          const list = WorkoutStore.getGroup(ctx.m, ctx.v, ctx.d, ctx.g);
-          root.querySelectorAll('.ex-grid .btn-select').forEach(b => {
-            const sel = list.includes(b.dataset.ex);
-            b.classList.toggle('is-selected', sel);
-            b.closest('.ex-card').classList.toggle('is-selected', sel);
-            b.setAttribute('aria-pressed', String(sel));
-            b.disabled = !sel && list.length >= vc.group.max;
-            b.innerHTML = sel ? icon('check') + '<span>Seleccionado</span>' : icon('plus') + '<span>Seleccionar</span>';
-          });
-        }
-      },
       actions: {
-        'anim-toggle': () => animator.toggle(),
-        'anim-restart': () => animator.restart(),
-        'anim-speed'(el) {
-          speedIdx = (speedIdx + 1) % SPEEDS.length;
-          animator.setSpeed(SPEEDS[speedIdx]);
-          el.querySelector('span').textContent = SPEEDS[speedIdx] === 1 ? '1×' : '0,5×';
-          el.setAttribute('aria-label', `Velocidad de la animación: ${SPEEDS[speedIdx] === 1 ? 'normal' : 'lenta'}`);
+        'view-method'(el) {
+          viewingMethod = el.dataset.m;
+          document.querySelectorAll('.method-option').forEach(b => b.setAttribute('aria-pressed', String(b === el)));
+          const detail = document.getElementById('method-detail');
+          detail.innerHTML = methodDetail(Planner.method(viewingMethod));
+          if (window.matchMedia('(max-width: 860px)').matches) detail.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
         },
-        'anim-seek'(el) {
-          animator.seek(el.dataset.phase);
-          const status = document.getElementById('anim-status');
-          if (status) status.textContent = `Fase: ${el.querySelector('.phase-name').textContent}. Animación en pausa.`;
-        },
-        'ex-goal'(el) { WorkoutStore.setGoal(el.dataset.goal); },
-        'ctx-toggle'() {
-          const result = WorkoutStore.toggle(ctx.m, ctx.v, ctx.d, ctx.g, ex.id, vc.group.max);
-          if (result === 'added') UI.toast(`${ex.name} añadido a ${vc.day.name} · ${vc.session.name}.`);
-          else if (result === 'removed') UI.toast(`${ex.name} quitado de la sesión.`);
-          else UI.toast(`Máximo de ${vc.group.max} ejercicios para este grupo.`, 'error');
-        },
-        'toggle-exercise'(el) {
-          const result = WorkoutStore.toggle(ctx.m, ctx.v, ctx.d, ctx.g, el.dataset.ex, vc.group.max);
-          if (result === 'full') UI.toast(`Máximo de ${vc.group.max} ejercicios para este grupo.`, 'error');
-        },
-        'open-add'(el) { openAddDialog(EXERCISE_INDEX[el.dataset.ex]); }
+        'choose-method'(el) {
+          const m = Planner.method(el.dataset.m);
+          const plan = currentPlan();
+          WorkoutStore.setPlan(m.id, plan && plan.m === m.id ? plan.v : m.variants[0].id);
+          go('#/plan/frecuencia');
+        }
       }
     };
   }
 
   /* =====================================================================
-     CATÁLOGO DE EJERCICIOS CON FILTROS
+     PASO 3 · FRECUENCIA
+     Al cambiar de frecuencia solo se actualizan las tarjetas de abajo.
+     ===================================================================== */
+  function weekCards(plan) {
+    const { m, v, variant } = plan;
+    const freq = Planner.weeklyFrequency(variant);
+    const days = DAYS.map(day => {
+      const s = Planner.sessionFor(variant, day.id);
+      if (s.id === 'rest') {
+        return `<div class="day-tile is-rest"><span class="day-name">${day.name}</span><span class="day-session">${icon('moon')}Descanso</span><span class="day-groups">Recuperación</span></div>`;
+      }
+      const p = Planner.sessionProgress(m, v, day.id);
+      return `<div class="day-tile tone-${s.tone}${p.complete ? ' is-complete' : ''}">
+        <span class="day-name">${day.name}</span>
+        <span class="day-session">${esc(s.name)}</span>
+        <span class="day-groups">${p.perGroup.map(g => esc(g.group.short || g.group.name)).join(' · ')}</span>
+        <span class="day-status">${p.complete ? icon('check') + UI.plural(p.done, 'ejercicio listo', 'ejercicios listos') : p.done ? `${p.done} elegidos · faltan grupos` : 'Sin ejercicios'}</span>
+        <span class="day-actions">
+          <a class="btn btn-ghost btn-sm" href="#/plan/dia/${day.id}">${p.done ? 'Editar' : 'Elegir ejercicios'}</a>
+          ${p.complete ? `<button type="button" class="btn btn-primary btn-sm" data-action="start-day" data-d="${day.id}">${icon('play')}<span>Entrenar</span></button>` : ''}
+        </span>
+      </div>`;
+    }).join('');
+    return `<p class="variant-desc">${icon('info')}${esc(variant.description)}</p>
+      <div class="freq-layout">
+        <div class="week-calendar">${days}</div>
+        <div class="freq-chart">
+          <h3>Veces por semana</h3>
+          ${GROUP_ORDER.filter(g => freq[g]).map(g => `<div class="freq-row tone-${UI.toneOfGroup(g)}">
+            <span class="freq-name">${esc(MUSCLE_GROUPS[g].short || MUSCLE_GROUPS[g].name)}</span>
+            <span class="freq-bar"><span style="width:${(freq[g] / 3) * 100}%"></span></span>
+            <span class="freq-val mono">${freq[g]}×</span></div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function freqTabs(plan) {
+    return plan.method.variants.map(x => `<button type="button" role="radio" class="seg-btn" data-action="choose-variant" data-v="${x.id}" aria-checked="${x.id === plan.v}">${icon('calendar')}${esc(x.name)}</button>`).join('');
+  }
+
+  function frequencyStep() {
+    const plan = currentPlan();
+    if (!plan) return { redirect: WorkoutStore.isOnboarded() ? '#/plan/metodo' : '#/plan/objetivo' };
+    const html = `
+      <section class="step-page">
+        <div class="container">
+          <div id="stepper-slot">${planStepper('frecuencia')}</div>
+          <div class="step-head step-head-row">
+            <div>
+              <h1 tabindex="-1">¿Cuántos días vas a entrenar?</h1>
+              <p class="lead">Método: <strong>${esc(plan.method.name)}</strong> · <a href="#/plan/metodo">cambiar</a>. Elige la frecuencia y después un día para elegir sus ejercicios.</p>
+            </div>
+            <div class="seg freq-tabs" role="radiogroup" aria-label="Frecuencia" id="freq-tabs">${freqTabs(plan)}</div>
+          </div>
+          <div id="freq-body">${weekCards(plan)}</div>
+        </div>
+      </section>`;
+    return {
+      title: 'Frecuencia',
+      html,
+      update(root) {
+        const p = currentPlan();
+        if (!p) return;
+        root.querySelector('#freq-tabs').innerHTML = freqTabs(p);
+        root.querySelector('#freq-body').innerHTML = weekCards(p);
+        root.querySelector('#stepper-slot').innerHTML = planStepper('frecuencia');
+      },
+      actions: {
+        'choose-variant'(el) {
+          const p = currentPlan();
+          WorkoutStore.setPlan(p.m, el.dataset.v);
+          const btn = document.querySelector(`[data-action="choose-variant"][data-v="${el.dataset.v}"]`);
+          if (btn) btn.focus({ preventScroll: true });
+        },
+        'start-day'(el) { startDay(el.dataset.d); }
+      }
+    };
+  }
+
+  async function startDay(dayId) {
+    const plan = currentPlan();
+    if (WorkoutStore.getActive()) {
+      const ok = await UI.confirm({ title: 'Ya tienes un entrenamiento en curso', text: 'Si empiezas otro, se descartará el progreso del entrenamiento actual.', confirmLabel: 'Empezar nuevo' });
+      if (!ok) return;
+    }
+    if (WorkoutStore.startWorkout(plan.m, plan.v, dayId)) go('#/entrenar');
+  }
+
+  /* =====================================================================
+     PASO 4 · EJERCICIOS DEL DÍA
+     El usuario elige los ejercicios de todos los grupos; la aplicación
+     los ordena automáticamente.
+     ===================================================================== */
+  const groupByDay = {};
+
+  function dayStep({ day: dayId }) {
+    const plan = currentPlan();
+    if (!plan) return { redirect: '#/plan/metodo' };
+    if (!plan.variant.schedule[dayId]) return { redirect: '#/plan/frecuencia' };
+    const { m, v, variant, method } = plan;
+    const day = DAYS.find(d => d.id === dayId);
+    const s = Planner.sessionFor(variant, dayId);
+    const groups = Planner.groupsOf(s);
+    const memKey = `${m}|${v}|${dayId}`;
+    if (!groups.some(g => g.id === groupByDay[memKey])) groupByDay[memKey] = groups[0].id;
+
+    const groupTabs = () => {
+      const p = Planner.sessionProgress(m, v, dayId);
+      return p.perGroup.map(x => `<button type="button" class="group-tab tone-${UI.toneOfGroup(x.id)}" data-action="pick-group" data-g="${x.id}" aria-pressed="${x.id === groupByDay[memKey]}" data-focus="gt-${x.id}">
+        <span class="group-name">${esc(x.group.name)}</span>
+        <span class="group-count mono">${x.count}/${x.max}</span>
+        ${x.ready ? `<span class="group-ok" aria-label="listo">${icon('check')}</span>` : ''}
+      </button>`).join('');
+    };
+
+    const groupPane = () => {
+      const g = groups.find(x => x.id === groupByDay[memKey]);
+      const list = WorkoutStore.getGroup(m, v, dayId, g.id);
+      const full = list.length >= g.max;
+      const next = groups[groups.indexOf(g) + 1];
+      return `<div class="group-pane-head tone-${UI.toneOfGroup(g.id)}">
+          <div>
+            <h2>${esc(g.group.name)}</h2>
+            <p class="muted">${esc(g.group.role)}</p>
+          </div>
+          <div class="counter${full ? ' is-full' : ''}" aria-live="polite">
+            <p><strong class="mono">${list.length} / ${g.max}</strong> elegidos</p>
+            ${UI.progress(list.length, g.max, `Ejercicios elegidos de ${g.group.name}`)}
+          </div>
+        </div>
+        ${RECOMMENDED[g.id] ? `<p class="rec-note">${icon('star')}<span><strong>Recomendados:</strong> ${esc(RECOMMENDED[g.id].why)}</span></p>` : ''}
+        <p class="limit-note">${icon('info')}<span>${full ? `Máximo alcanzado (${g.max}). Quita uno para cambiarlo.` : `Elige hasta ${g.max}. ${s.hint ? esc(s.hint) : ''}`}</span></p>
+        <div class="ex-grid">
+          ${Planner.exercisesFor(g.id).map((ex, i) => UI.exerciseCard(ex, {
+            groupId: g.id, selectable: true, index: i,
+            selected: list.includes(ex.id), disabled: full && !list.includes(ex.id)
+          })).join('')}
+        </div>
+        ${next && list.length >= g.min ? `<div class="group-next"><button type="button" class="btn btn-secondary" data-action="pick-group" data-g="${next.id}">Siguiente grupo: ${esc(next.group.name)}${icon('arrow-right')}</button></div>` : ''}`;
+    };
+
+    const routinePanel = () => {
+      const p = Planner.sessionProgress(m, v, dayId);
+      const order = Planner.orderRoutine(m, v, dayId);
+      const copyFrom = !p.done ? Planner.trainingDays(variant).filter(d => d.id !== dayId && variant.schedule[d.id] === s.id && Planner.sessionProgress(m, v, d.id).done) : [];
+      const missing = p.perGroup.filter(x => !x.ready).map(x => x.group.name);
+      return `<h2>Tu rutina</h2>
+        <p class="muted small routine-sub">${icon('list')}<span>Orden automático: compuestos y músculos grandes primero, aislamientos al final.</span></p>
+        ${order.length ? `<ol class="routine-list">${order.map((it, i) => {
+          const ex = EXERCISE_INDEX[it.id];
+          return `<li class="tone-${UI.toneOfGroup(it.g)}">
+            <span class="routine-n mono">${i + 1}</span>
+            <div><strong>${esc(ex.name)}</strong><small><span class="dot"></span>${esc(MUSCLE_GROUPS[it.g].name)}</small></div>
+          </li>`;
+        }).join('')}</ol>` : '<p class="routine-empty">Elige ejercicios en cada grupo y aquí verás el orden en que los harás.</p>'}
+        ${copyFrom.map(d => `<button type="button" class="btn btn-ghost btn-sm btn-block" data-action="copy-day" data-from="${d.id}">${icon('copy')}<span>Copiar la selección del ${d.name.toLowerCase()}</span></button>`).join('')}
+        <button type="button" class="btn btn-primary btn-lg btn-block${p.complete ? ' btn-pulse' : ''}" data-action="start-workout" ${p.complete ? '' : 'disabled'}>${icon('play')}<span>Iniciar entrenamiento</span></button>
+        ${p.complete ? '' : `<p class="routine-hint">${icon('info')}<span>Falta elegir: ${missing.map(esc).join(', ')}.</span></p>`}
+        ${p.done ? `<button type="button" class="btn btn-ghost btn-sm btn-block btn-danger-text" data-action="clear-day">${icon('trash')}<span>Vaciar el día</span></button>` : ''}`;
+    };
+
+    const mobileBar = () => {
+      const p = Planner.sessionProgress(m, v, dayId);
+      const ready = p.perGroup.filter(x => x.ready).length;
+      return `<p><strong>${UI.plural(p.done, 'ejercicio', 'ejercicios')}</strong> · ${ready}/${p.perGroup.length} grupos listos</p>
+        <button type="button" class="btn btn-primary${p.complete ? ' btn-pulse' : ''}" data-action="start-workout" ${p.complete ? '' : 'disabled'}>${icon('play')}<span>Iniciar</span></button>`;
+    };
+
+    const html = `
+      <section class="step-page">
+        <div class="container">
+          <div id="stepper-slot">${planStepper('dia')}</div>
+          <div class="day-head tone-${s.tone}">
+            <div>
+              <p class="eyebrow">${esc(method.name)} · ${esc(variant.name)}</p>
+              <h1 tabindex="-1">${day.name} · <span class="tone-text">${esc(s.name)}</span></h1>
+              <p class="muted">Elige los ejercicios de cada grupo. Nosotros los ordenamos de la forma más eficaz.</p>
+            </div>
+            <nav class="day-switch" aria-label="Días de entrenamiento">
+              ${Planner.trainingDays(variant).map(d => {
+                const ds = Planner.sessionFor(variant, d.id);
+                return `<a class="day-chip tone-${ds.tone}" href="#/plan/dia/${d.id}" aria-current="${d.id === dayId ? 'page' : 'false'}"><b>${d.short}</b>${esc(ds.name)}</a>`;
+              }).join('')}
+            </nav>
+          </div>
+          <div class="builder">
+            <div class="builder-main">
+              <div class="group-tabs" id="group-tabs" role="group" aria-label="Grupos musculares">${groupTabs()}</div>
+              <div class="group-pane" id="group-pane">${groupPane()}</div>
+            </div>
+            <aside class="routine-panel" id="routine-panel" aria-label="Tu rutina">${routinePanel()}</aside>
+          </div>
+        </div>
+        <div class="mobile-bar" id="mobile-bar">${mobileBar()}</div>
+      </section>`;
+
+    const refresh = root => {
+      const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.focus : null;
+      root.querySelector('#group-tabs').innerHTML = groupTabs();
+      root.querySelector('#group-pane').innerHTML = groupPane();
+      root.querySelector('#routine-panel').innerHTML = routinePanel();
+      root.querySelector('#mobile-bar').innerHTML = mobileBar();
+      if (focusKey) {
+        const el = root.querySelector(`[data-focus="${focusKey}"]`);
+        if (el && !el.disabled) el.focus({ preventScroll: true });
+      }
+    };
+
+    return {
+      title: `${day.name} · ${s.name}`,
+      html,
+      update: refresh,
+      actions: {
+        'pick-group'(el) {
+          groupByDay[memKey] = el.dataset.g;
+          const root = document.getElementById('app');
+          refresh(root);
+          const tabs = root.querySelector('#group-tabs');
+          if (tabs.getBoundingClientRect().top < 60) tabs.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+          const cur = tabs.querySelector('[aria-pressed="true"]');
+          if (cur) tabs.scrollLeft = cur.offsetLeft - (tabs.clientWidth - cur.clientWidth) / 2;
+        },
+        'toggle-exercise'(el) {
+          const g = groups.find(x => x.id === groupByDay[memKey]);
+          const before = Planner.sessionProgress(m, v, dayId).complete;
+          const r = WorkoutStore.toggle(m, v, dayId, g.id, el.dataset.ex, g.max);
+          if (r === 'full') UI.toast(`Máximo de ${g.max} ejercicios para ${g.group.name.toLowerCase()}.`, 'error');
+          if (!before && Planner.sessionProgress(m, v, dayId).complete) UI.toast('¡Listo! Ya puedes iniciar el entrenamiento.');
+        },
+        'open-exercise'(el) {
+          const g = groups.find(x => x.id === groupByDay[memKey]);
+          openExercise(el.dataset.ex, { groupId: g.id, selectCtx: { m, v, d: dayId, g: g.id, max: g.max } });
+        },
+        'copy-day'(el) { WorkoutStore.copySession(m, v, el.dataset.from, dayId); UI.toast('Selección copiada.'); },
+        async 'clear-day'() {
+          const ok = await UI.confirm({ title: 'Vaciar el día', text: `Se quitarán todos los ejercicios del ${day.name.toLowerCase()}.`, confirmLabel: 'Vaciar', danger: true });
+          if (ok) WorkoutStore.clearSession(m, v, dayId);
+        },
+        'start-workout'() { startDay(dayId); }
+      }
+    };
+  }
+
+  /* =====================================================================
+     PASO 5 · ENTRENAR (un ejercicio cada vez)
+     ===================================================================== */
+  function player() {
+    const a = WorkoutStore.getActive();
+    if (!a) return { redirect: '#/' };
+    const variant = Planner.variant(Planner.method(a.m), a.v);
+    const s = Planner.sessionFor(variant, a.d);
+    const day = DAYS.find(d => d.id === a.d);
+    const item = a.items[a.index];
+    const ex = EXERCISE_INDEX[item.id];
+    const g = GOALS[a.goal];
+    const renderedIndex = a.index;
+    const isLast = a.index === a.items.length - 1;
+    let cleanupAnim = null, restTimer = null;
+
+    const progressBar = () => {
+      const cur = WorkoutStore.getActive();
+      return cur.items.map((it, i) => {
+        const done = (cur.done[i] || 0) >= g.setsNum;
+        return `<li><button type="button" class="pp-seg${i === cur.index ? ' is-current' : ''}${done ? ' is-done' : ''}" data-action="go-exercise" data-i="${i}"
+          aria-label="Ejercicio ${i + 1}: ${esc(EXERCISE_INDEX[it.id].name)}${done ? ', completado' : ''}"${i === cur.index ? ' aria-current="step"' : ''}><span></span></button></li>`;
+      }).join('');
+    };
+
+    const setsBlock = () => {
+      const cur = WorkoutStore.getActive();
+      const done = cur.done[cur.index] || 0;
+      return `<div class="sets-head"><span>Series completadas</span><strong class="mono">${done} / ${g.setsNum}</strong></div>
+        <div class="set-row">${Array.from({ length: g.setsNum }, (_, k) => `<button type="button" class="set-btn${k < done ? ' is-done' : ''}" data-action="toggle-set" data-k="${k}" aria-pressed="${k < done}" data-focus="set-${k}">
+          ${k < done ? icon('check') : `<span class="mono">${k + 1}</span>`}<span>Serie ${k + 1}</span></button>`).join('')}</div>
+        ${done >= g.setsNum ? `<p class="sets-done">${icon('check')}<span>¡Ejercicio completado! ${isLast ? 'Pulsa «Finalizar entrenamiento».' : 'Pulsa «Siguiente ejercicio».'}</span></p>` : '<p class="muted small">Marca cada serie al terminarla. Empezará el descanso.</p>'}`;
+    };
+
+    const nextBtn = () => {
+      const cur = WorkoutStore.getActive();
+      const complete = (cur.done[cur.index] || 0) >= g.setsNum;
+      return `<button type="button" class="btn btn-primary btn-lg${complete ? ' btn-pulse' : ''}" data-action="next-exercise" id="next-btn">
+        <span>${isLast ? 'Finalizar entrenamiento' : 'Siguiente ejercicio'}</span>${icon(isLast ? 'flag' : 'arrow-right')}</button>`;
+    };
+
+    const html = `
+      <section class="player tone-${UI.toneOfGroup(item.g)}">
+        <div class="container">
+          <div class="player-top">
+            <div>
+              <p class="eyebrow"><span class="live-dot"></span>Entrenamiento en curso · ${esc(g.name)}</p>
+              <p class="player-session">${day.name} · <span class="tone-text">${esc(s.name)}</span></p>
+            </div>
+            <div class="player-top-actions">
+              <a class="btn btn-ghost btn-sm" href="#/">${icon('exit')}<span>Pausar y salir</span></a>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="finish-early">${icon('flag')}<span>Terminar</span></button>
+            </div>
+          </div>
+          <ol class="player-progress" id="pp" aria-label="Progreso del entrenamiento">${progressBar()}</ol>
+          <div class="player-grid">
+            <div class="player-anim">${animCard(ex)}</div>
+            <div class="player-panel">
+              <p class="player-count">Ejercicio ${a.index + 1} de ${a.items.length}
+                <span class="chip chip-static"><span class="dot"></span>${esc(MUSCLE_GROUPS[item.g].name)}</span>
+                ${Planner.isRecommended(ex.id, item.g) ? `<span class="rec-badge rec-inline">${icon('star')}Recomendado</span>` : ''}</p>
+              <h1 class="player-ex" tabindex="-1">${esc(ex.name)}</h1>
+              <dl class="rx-row">
+                <div><dt>Series</dt><dd class="mono">${g.setsNum}</dd></div>
+                <div><dt>Repeticiones</dt><dd class="mono">${esc(Planner.repsFor(ex, a.goal))}</dd></div>
+                <div><dt>Esfuerzo</dt><dd class="mono">${esc(g.prescription.rir)}</dd></div>
+                <div><dt>Descanso</dt><dd class="mono">${esc(g.prescription.rest)}</dd></div>
+              </dl>
+              <div class="sets" id="sets">${setsBlock()}</div>
+              <div class="rest" id="rest" hidden aria-live="polite"></div>
+              ${UI.tabs('player-info', [
+                { id: 'tecnica', label: 'Técnica', html: stepsHtml(ex) },
+                { id: 'errores', label: 'Errores', html: `<ul class="list-x">${ex.mistakes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` },
+                { id: 'consejos', label: 'Consejos', html: `<ul class="list-check">${ex.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` },
+                { id: 'orden', label: '¿Por qué aquí?', html: `<p>${esc(item.why)}</p><p class="muted small">El orden lo calcula FIT SPLIT: ejercicios compuestos y músculos grandes primero, cuando tienes más energía; aislamientos al final.</p>` }
+              ])}
+            </div>
+          </div>
+          <div class="player-nav">
+            <button type="button" class="btn btn-ghost btn-lg" data-action="prev-exercise" aria-label="Ejercicio anterior" ${a.index === 0 ? 'disabled' : ''}>${icon('arrow-left')}<span>Anterior</span></button>
+            <span id="next-slot">${nextBtn()}</span>
+          </div>
+        </div>
+      </section>`;
+
+    function stopRest() { clearInterval(restTimer); restTimer = null; }
+    function startRest(root) {
+      stopRest();
+      let left = g.restSec;
+      const box = root.querySelector('#rest');
+      const fmt = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+      const draw = () => {
+        box.hidden = false;
+        box.classList.toggle('is-over', left <= 0);
+        box.innerHTML = left > 0
+          ? `${icon('clock')}<span>Descanso <strong class="mono">${fmt(left)}</strong></span><button type="button" class="btn btn-ghost btn-sm" data-action="skip-rest">${icon('skip')}<span>Saltar</span></button>`
+          : `${icon('bolt')}<span><strong>¡A por la siguiente serie!</strong></span>`;
+      };
+      draw();
+      restTimer = setInterval(() => {
+        left -= 1;
+        draw();
+        if (left <= 0) {
+          stopRest();
+          setTimeout(() => { if (!restTimer && box.isConnected) box.hidden = true; }, 4000);
+        }
+      }, 1000);
+    }
+
+    return {
+      title: `Entrenando · ${ex.name}`,
+      html,
+      mount(root) {
+        cleanupAnim = mountAnim(root.querySelector('.player-anim'), ex);
+        return () => { if (cleanupAnim) cleanupAnim(); stopRest(); };
+      },
+      update(root) {
+        const cur = WorkoutStore.getActive();
+        if (!cur) return;
+        if (cur.index !== renderedIndex) { rerender(); return; }
+        root.querySelector('#sets').innerHTML = setsBlock();
+        root.querySelector('#pp').innerHTML = progressBar();
+        root.querySelector('#next-slot').innerHTML = nextBtn();
+      },
+      actions: {
+        'toggle-set'(el) {
+          const k = Number(el.dataset.k);
+          const cur = WorkoutStore.getActive();
+          const done = cur.done[cur.index] || 0;
+          const next = k < done ? k : k + 1;
+          WorkoutStore.setDone(cur.index, next);
+          const root = document.getElementById('app');
+          if (next > done && next < g.setsNum) startRest(root);
+          else { stopRest(); root.querySelector('#rest').hidden = true; }
+          const target = root.querySelector(next >= g.setsNum ? '#next-btn' : `[data-focus="set-${k}"]`);
+          if (target) target.focus({ preventScroll: true });
+        },
+        'skip-rest'() { stopRest(); document.getElementById('rest').hidden = true; },
+        'go-exercise'(el) { WorkoutStore.goTo(Number(el.dataset.i)); },
+        'prev-exercise'() { WorkoutStore.goTo(renderedIndex - 1); },
+        'next-exercise'() {
+          if (isLast) { WorkoutStore.finishWorkout(); go('#/entrenar/fin'); }
+          else WorkoutStore.goTo(renderedIndex + 1);
+        },
+        async 'finish-early'() {
+          const ok = await UI.confirm({ title: 'Terminar entrenamiento', text: 'Se guardará como terminado con las series que hayas marcado.', confirmLabel: 'Terminar' });
+          if (ok) { WorkoutStore.finishWorkout(); go('#/entrenar/fin'); }
+        }
+      }
+    };
+  }
+
+  /* Pantalla final con el recordatorio sobre la alimentación */
+  function finish() {
+    const last = WorkoutStore.getLast();
+    if (!last) return { redirect: '#/' };
+    const html = `
+      <section class="finish tone-${last.tone}">
+        <div class="container finish-grid">
+          <div class="finish-main">
+            <span class="finish-icon">${icon('trophy')}</span>
+            <p class="eyebrow">Entrenamiento completado</p>
+            <h1 tabindex="-1">¡Buen trabajo!</h1>
+            <p class="lead">${esc(last.sessionName)}</p>
+            <dl class="finish-stats">
+              <div><dt>Ejercicios</dt><dd class="mono">${last.exercises}</dd></div>
+              <div><dt>Series</dt><dd class="mono">${last.sets}</dd></div>
+              <div><dt>Minutos</dt><dd class="mono">${last.minutes}</dd></div>
+            </dl>
+            <div class="btn-row">
+              <a class="btn btn-primary" href="#/plan/frecuencia">Planificar otro día${icon('arrow-right')}</a>
+              <a class="btn btn-secondary" href="#/">${icon('home')}<span>Ir al inicio</span></a>
+            </div>
+          </div>
+          <section class="nutrition-card" aria-labelledby="nutri-title">
+            <span class="topic-icon">${icon('leaf')}</span>
+            <h2 id="nutri-title">${esc(NUTRITION_NOTE.title)}</h2>
+            <p>${esc(NUTRITION_NOTE.text)}</p>
+            <ul class="list-check">${NUTRITION_NOTE.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>
+            <a class="text-link" href="#/aprende/alimentacion">Aprender sobre alimentación${icon('arrow-right')}</a>
+          </section>
+        </div>
+      </section>`;
+    return { title: 'Entrenamiento completado', html };
+  }
+
+  /* =====================================================================
+     BIBLIOTECA DE EJERCICIOS
      ===================================================================== */
   const filters = { q: '', group: 'all', equip: 'all', diff: 'all', goal: 'all' };
   const normalize = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
   function filterExercises() {
     const q = normalize(filters.q.trim());
-    return EXERCISES.filter(ex => {
+    const list = EXERCISES.filter(ex => {
       if (filters.group !== 'all' && !ex.groups.includes(filters.group)) return false;
       if (filters.equip !== 'all' && !ex.equipment.includes(filters.equip)) return false;
       if (filters.diff !== 'all' && ex.difficulty !== filters.diff) return false;
       if (filters.goal !== 'all' && !ex.goals.includes(filters.goal)) return false;
       if (!q) return true;
-      const haystack = normalize([
-        ex.name, ex.movement, ex.equipmentLabel, ...ex.primary, ...ex.secondary,
-        ...ex.groups.map(g => MUSCLE_GROUPS[g].name)
-      ].join(' '));
-      return q.split(/\s+/).every(word => haystack.includes(word));
+      const hay = normalize([ex.name, ex.movement, ex.equipmentLabel, ...ex.primary, ...ex.secondary, ...ex.groups.map(g => MUSCLE_GROUPS[g].name)].join(' '));
+      return q.split(/\s+/).every(w => hay.includes(w));
     });
+    return filters.group === 'all' ? list : list.sort((a, b) => Planner.isRecommended(b.id, filters.group) - Planner.isRecommended(a.id, filters.group));
   }
 
-  function exercises(q) {
-    if (q.grupo && MUSCLE_GROUPS[q.grupo]) {
-      Object.assign(filters, { q: '', group: q.grupo, equip: 'all', diff: 'all', goal: 'all' });
-    }
+  function exercises() {
     const select = (id, label, value, opts) => `<div class="field"><label for="${id}">${label}</label>
       <div class="select-wrap"><select id="${id}">${opts.map(([v, t]) => `<option value="${v}"${v === value ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>${icon('chevron-down')}</div></div>`;
-
     const html = `
-      <section class="page-head">
+      <section class="step-page">
         <div class="container">
-          <p class="eyebrow">Biblioteca</p>
-          <h1 tabindex="-1">Ejercicios</h1>
-          <p class="lead">${EXERCISES.length} ejercicios con animación, técnica paso a paso, errores frecuentes y recomendaciones según tu objetivo.</p>
-        </div>
-      </section>
-      <section class="section">
-        <div class="container">
+          <div class="page-title">
+            <h1 tabindex="-1">Ejercicios</h1>
+            <p class="muted">${EXERCISES.length} ejercicios con animación, técnica y recomendaciones según tu objetivo. Toca uno para verlo.</p>
+          </div>
           <form class="filters" id="filters" role="search" aria-label="Buscar y filtrar ejercicios">
             <div class="field field-search"><label for="f-q">Buscar</label>
               <div class="input-icon">${icon('search')}<input id="f-q" type="search" placeholder="Nombre, músculo o equipamiento" value="${esc(filters.q)}" autocomplete="off"></div></div>
@@ -1031,7 +987,7 @@ const Views = (() => {
       root.querySelector('#results-count').textContent = `${UI.plural(list.length, 'ejercicio', 'ejercicios')}${active ? ' con los filtros actuales' : ''}`;
       root.querySelector('#clear-filters').hidden = !active;
       root.querySelector('#results').innerHTML = list.length
-        ? list.map((ex, i) => UI.exerciseCard(ex, { showAdd: true, index: Math.min(i, 8) })).join('')
+        ? list.map((ex, i) => UI.exerciseCard(ex, { groupId: filters.group !== 'all' ? filters.group : null, index: Math.min(i, 8) })).join('')
         : UI.emptyState({
           iconName: 'search', title: 'Sin resultados',
           text: filters.q ? `No hay ejercicios que coincidan con «${filters.q}» y los filtros elegidos.` : 'No hay ejercicios con esta combinación de filtros.',
@@ -1053,49 +1009,61 @@ const Views = (() => {
         renderResults(root);
       },
       actions: {
-        'clear-filters'(el) {
-          const root = el.closest('#app');
+        'clear-filters'() {
+          const root = document.getElementById('app');
           Object.assign(filters, { q: '', group: 'all', equip: 'all', diff: 'all', goal: 'all' });
           root.querySelector('#f-q').value = '';
           ['f-group', 'f-equip', 'f-diff', 'f-goal'].forEach(id => { root.querySelector('#' + id).value = 'all'; });
           renderResults(root);
           root.querySelector('#f-q').focus();
         },
-        'open-add'(el) { openAddDialog(EXERCISE_INDEX[el.dataset.ex]); }
+        'open-exercise'(el) { openExercise(el.dataset.ex, { groupId: filters.group !== 'all' ? filters.group : null }); }
       }
     };
   }
 
+  /* Ficha de ejercicio como página (enlace directo) */
+  function exercise({ id }) {
+    const ex = EXERCISE_INDEX[id];
+    if (!ex) return notFound();
+    return {
+      title: ex.name,
+      html: `<section class="step-page"><div class="container">${exerciseDetail(ex, { headingTag: 'h1' })}</div></section>`,
+      mount(root) { return mountDetail(root.querySelector('.exd'), ex); }
+    };
+  }
+
   /* =====================================================================
-     APRENDE (biblioteca y temas)
+     APRENDE
      ===================================================================== */
   function learn() {
+    const t = id => LEARN_TOPICS.find(x => x.id === id);
     const goalsIds = ['hipertrofia', 'fuerza', 'resistencia-muscular'];
-    const topic = id => LEARN_TOPICS.find(t => t.id === id);
+    const rest = LEARN_TOPICS.filter(x => !goalsIds.includes(x.id) && x.id !== 'alimentacion');
     const html = `
-      <section class="page-head">
+      <section class="step-page">
         <div class="container">
-          <p class="eyebrow">Aprende</p>
-          <h1 tabindex="-1">Biblioteca educativa</h1>
-          <p class="lead">Conceptos clave del entrenamiento de fuerza explicados de forma clara, con matices cuando la evidencia los tiene y sin promesas absolutas.</p>
-        </div>
-      </section>
-      <section class="section">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Objetivos', title: 'Qué adaptación buscas' })}
-          <div class="card-grid card-grid-3">${goalsIds.map(id => UI.topicCard(topic(id))).join('')}</div>
-        </div>
-      </section>
-      <section class="section section-alt">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Fundamentos', title: 'Cómo funciona el entrenamiento' })}
-          <div class="card-grid card-grid-3">${FUNDAMENTALS.map(id => UI.topicCard(topic(id))).join('')}</div>
+          <div class="page-title">
+            <h1 tabindex="-1">Aprende</h1>
+            <p class="muted">Conceptos clave explicados con claridad, con matices cuando la evidencia los tiene y sin promesas absolutas.</p>
+          </div>
+          <div class="learn-grid">
+            <section class="side-box">
+              <h2>Lo más importante</h2>
+              <div class="topic-list">${UI.topicCard(t('alimentacion'), { featured: true })}</div>
+              <h2 class="mt">Objetivos</h2>
+              <div class="topic-list">${goalsIds.map(id => UI.topicCard(t(id))).join('')}</div>
+            </section>
+            <section class="side-box">
+              <h2>Fundamentos</h2>
+              <div class="topic-list">${rest.map(x => UI.topicCard(x)).join('')}</div>
+            </section>
+          </div>
         </div>
       </section>`;
     return { title: 'Aprende', html };
   }
 
-  /* Widgets interactivos de los temas */
   const RIR_TEXT = [
     'Fallo: no podrías completar otra repetición con técnica adecuada. Útil de forma puntual, sobre todo en ejercicios seguros como máquinas o aislamiento.',
     'Muy cerca del fallo. Estímulo alto con algo de margen para mantener la técnica.',
@@ -1107,8 +1075,7 @@ const Views = (() => {
 
   function widget(type) {
     switch (type) {
-      case 'tension-flow':
-        return tensionFlow(false);
+      case 'tension-flow': return tensionFlow(false);
       case 'rep-scale': {
         const goal = WorkoutStore.getGoal();
         return `<div class="widget scale-widget">
@@ -1121,13 +1088,9 @@ const Views = (() => {
       }
       case 'rir':
         return `<div class="widget rir-widget">
-          <div class="rir-top">
-            <label for="rir-range">Repeticiones en reserva</label>
-            <output id="rir-out" class="mono" for="rir-range">RIR 2</output>
-          </div>
+          <div class="rir-top"><label for="rir-range">Repeticiones en reserva</label><output id="rir-out" class="mono" for="rir-range">RIR 2</output></div>
           <input type="range" id="rir-range" min="0" max="5" step="1" value="2" aria-describedby="rir-text">
           <div class="rir-dots" id="rir-dots" aria-hidden="true"></div>
-          <p class="rir-legend"><span class="sw sw-done"></span>Repeticiones hechas <span class="sw sw-left"></span>Repeticiones en reserva</p>
           <p class="rir-text" id="rir-text"></p>
           <p class="muted small">Ejemplo con una carga que permitiría un máximo de 12 repeticiones.</p>
         </div>`;
@@ -1135,14 +1098,14 @@ const Views = (() => {
         return `<div class="widget calc-widget">
           <div class="calc-inputs">
             <div class="field"><label for="c-sets">Series por sesión</label><input type="number" id="c-sets" min="1" max="12" value="3" inputmode="numeric"></div>
-            <div class="field"><label for="c-reps">Repeticiones por serie</label><input type="number" id="c-reps" min="1" max="40" value="10" inputmode="numeric"></div>
+            <div class="field"><label for="c-reps">Repeticiones</label><input type="number" id="c-reps" min="1" max="40" value="10" inputmode="numeric"></div>
             <div class="field"><label for="c-load">Carga (kg)</label><input type="number" id="c-load" min="0" max="500" value="40" inputmode="decimal"></div>
-            <div class="field"><label for="c-freq">Sesiones por semana</label><input type="number" id="c-freq" min="1" max="4" value="2" inputmode="numeric"></div>
+            <div class="field"><label for="c-freq">Sesiones / semana</label><input type="number" id="c-freq" min="1" max="4" value="2" inputmode="numeric"></div>
           </div>
           <dl class="calc-out">
             <div><dt>Series semanales</dt><dd class="mono" id="c-out-sets">6</dd></div>
-            <div><dt>Repeticiones semanales</dt><dd class="mono" id="c-out-reps">60</dd></div>
-            <div><dt>Tonelaje semanal</dt><dd class="mono" id="c-out-ton">2400 kg</dd></div>
+            <div><dt>Repeticiones</dt><dd class="mono" id="c-out-reps">60</dd></div>
+            <div><dt>Tonelaje</dt><dd class="mono" id="c-out-ton">2400 kg</dd></div>
           </dl>
           <p class="calc-note" id="c-note"></p>
         </div>`;
@@ -1152,23 +1115,18 @@ const Views = (() => {
           <tbody>${INTENSITY_MEANINGS.map(r => `<tr><th scope="row">${esc(r.name)}</th><td>${esc(r.measure)}</td><td>${esc(r.example)}</td><td>${esc(r.use)}</td></tr>`).join('')}</tbody>
         </table></div>`;
       case 'recovery-list':
-        return `<div class="pillars">${RECOVERY_PILLARS.map(p => `<div class="pillar"><span class="topic-icon">${icon(p.icon)}</span><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p></div>`).join('')}</div>`;
+        return `<div class="pillars">${RECOVERY_PILLARS.map(p => `<div class="pillar"><span class="topic-icon">${icon(p.icon)}</span><h4>${esc(p.title)}</h4><p>${esc(p.text)}</p></div>`).join('')}</div>`;
       case 'progression': {
         const weeks = [
-          { w: 1, load: 40, reps: [8, 8, 7] },
-          { w: 2, load: 40, reps: [10, 9, 9] },
-          { w: 3, load: 40, reps: [11, 11, 10] },
-          { w: 4, load: 40, reps: [12, 12, 12], up: true },
-          { w: 5, load: 42.5, reps: [9, 8, 8] }
+          { w: 1, load: 40, reps: [8, 8, 7] }, { w: 2, load: 40, reps: [10, 9, 9] }, { w: 3, load: 40, reps: [11, 11, 10] },
+          { w: 4, load: 40, reps: [12, 12, 12], up: true }, { w: 5, load: 42.5, reps: [9, 8, 8] }
         ];
-        return `<div class="widget progression">
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Ejemplo de doble progresión"><table class="compare">
-            <thead><tr><th scope="col">Semana</th><th scope="col">Carga</th><th scope="col">Repeticiones (3 series)</th><th scope="col">Decisión</th></tr></thead>
-            <tbody>${weeks.map(r => `<tr${r.up ? ' class="is-up"' : ''}><th scope="row" class="mono">${r.w}</th><td class="mono">${String(r.load).replace('.', ',')} kg</td>
-              <td><span class="rep-bars">${r.reps.map(n => `<span class="rep-bar" style="--h:${(n / 12) * 100}%"><b class="mono">${n}</b></span>`).join('')}</span></td>
-              <td>${r.up ? `${icon('check')}12 en todas las series: sube la carga` : r.w === 5 ? 'Nueva carga, vuelves cerca de 8' : 'Sigue sumando repeticiones'}</td></tr>`).join('')}</tbody>
-          </table></div>
-        </div>`;
+        return `<div class="table-wrap" tabindex="0" role="region" aria-label="Ejemplo de doble progresión"><table class="compare">
+          <thead><tr><th scope="col">Semana</th><th scope="col">Carga</th><th scope="col">Repeticiones (3 series)</th><th scope="col">Decisión</th></tr></thead>
+          <tbody>${weeks.map(r => `<tr${r.up ? ' class="is-up"' : ''}><th scope="row" class="mono">${r.w}</th><td class="mono">${String(r.load).replace('.', ',')} kg</td>
+            <td class="mono">${r.reps.join(' · ')}</td>
+            <td>${r.up ? '12 en todas: sube la carga' : r.w === 5 ? 'Nueva carga, vuelves cerca de 8' : 'Sigue sumando repeticiones'}</td></tr>`).join('')}</tbody>
+        </table></div>`;
       }
     }
     return '';
@@ -1178,8 +1136,7 @@ const Views = (() => {
     const range = root.querySelector('#rir-range');
     if (range) {
       const draw = () => {
-        const rir = Number(range.value);
-        const done = 12 - rir;
+        const rir = Number(range.value), done = 12 - rir;
         root.querySelector('#rir-out').textContent = `RIR ${rir}`;
         root.querySelector('#rir-dots').innerHTML = Array.from({ length: 12 }, (_, i) => `<span class="${i < done ? 'is-done' : 'is-left'}">${i + 1}</span>`).join('');
         root.querySelector('#rir-text').innerHTML = `<strong>${done} repeticiones hechas, ${rir} en reserva.</strong> ${esc(RIR_TEXT[rir])}`;
@@ -1197,11 +1154,9 @@ const Views = (() => {
         calc.querySelector('#c-out-sets').textContent = weekly;
         calc.querySelector('#c-out-reps').textContent = (weekly * reps).toLocaleString('es');
         calc.querySelector('#c-out-ton').textContent = `${(weekly * reps * load).toLocaleString('es')} kg`;
-        const ref = weekly < 10
-          ? 'Por debajo de la referencia común de 10–20 series semanales para hipertrofia. Puede ser suficiente al empezar o para mantener.'
-          : weekly <= 20
-            ? 'Dentro de la referencia común de 10–20 series semanales por grupo muscular para hipertrofia.'
-            : 'Por encima de la referencia común. Puede funcionar en personas avanzadas, pero vigila la recuperación.';
+        const ref = weekly < 10 ? 'Por debajo de la referencia común de 10–20 series semanales para hipertrofia.'
+          : weekly <= 20 ? 'Dentro de la referencia común de 10–20 series semanales por grupo muscular.'
+            : 'Por encima de la referencia común: vigila la recuperación.';
         calc.querySelector('#c-note').innerHTML = `${icon('info')}<span>${ref} El tonelaje mezcla carga y repeticiones: dos planes con el mismo tonelaje pueden generar estímulos muy distintos.</span>`;
       };
       calc.addEventListener('input', draw);
@@ -1212,57 +1167,40 @@ const Views = (() => {
   function topic({ id }) {
     const t = LEARN_TOPICS.find(x => x.id === id);
     if (!t) return notFound();
-    const i = LEARN_TOPICS.indexOf(t);
-    const prev = LEARN_TOPICS[i - 1], next = LEARN_TOPICS[i + 1];
+    const items = t.sections.map((sec, i) => ({
+      id: 's' + i, label: sec.h,
+      html: `${(sec.p || []).map(p => `<p>${esc(p)}</p>`).join('')}
+        ${sec.widget ? widget(sec.widget) : ''}
+        ${sec.list ? `<ul class="list-dot">${sec.list.map(li => `<li>${esc(li)}</li>`).join('')}</ul>` : ''}
+        ${sec.defs ? `<dl class="defs">${sec.defs.map(d => `<div><dt>${esc(d.t)}</dt><dd>${esc(d.d)}</dd></div>`).join('')}</dl>` : ''}`
+    }));
+    items.push({ id: 'mitos', label: 'Ideas erróneas', html: `<div class="myths">${t.myths.map(m => `<div class="myth">
+        <p class="myth-claim">${icon('x')}<span>«${esc(m.myth)}»</span></p><p class="myth-reality">${icon('check')}<span>${esc(m.reality)}</span></p></div>`).join('')}</div>` });
+    items.push({ id: 'lecturas', label: 'Lecturas', html: `<ul class="refs">${t.refs.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` });
 
     const html = `
-      <section class="page-head">
-        <div class="container narrow-left">
-          ${UI.breadcrumb([{ label: 'Aprende', href: '#/aprende' }, { label: t.title }])}
-          <p class="eyebrow">${icon('clock')}${t.readTime} min de lectura</p>
-          <h1 tabindex="-1">${esc(t.title)}</h1>
-          <p class="lead">${esc(t.lead)}</p>
+      <section class="step-page">
+        <div class="container">
+          <div class="page-title">
+            <p class="eyebrow">${icon(t.icon)}Aprende · ${t.readTime} min</p>
+            <h1 tabindex="-1">${esc(t.title)}</h1>
+            <p class="lead">${esc(t.lead)}</p>
+          </div>
+          <div class="article-layout">
+            <article class="article">${UI.tabs('topic-' + t.id, items)}</article>
+            <aside class="article-aside">
+              <div class="side-box key-box">
+                <h2>Ideas clave</h2>
+                <ul class="list-check">${t.keyPoints.map(k => `<li>${esc(k)}</li>`).join('')}</ul>
+              </div>
+              <nav class="side-box" aria-label="Otros temas">
+                <h2>Otros temas</h2>
+                <ul class="topic-links">${LEARN_TOPICS.map(x => `<li><a href="#/aprende/${x.id}"${x.id === t.id ? ' aria-current="page"' : ''}>${icon(x.icon)}${esc(x.title)}</a></li>`).join('')}</ul>
+              </nav>
+            </aside>
+          </div>
         </div>
-      </section>
-      <section class="section">
-        <div class="container article-layout">
-          <article class="article">
-            ${t.sections.map(sec => `<section class="article-section">
-              <h2>${esc(sec.h)}</h2>
-              ${(sec.p || []).map(p => `<p>${esc(p)}</p>`).join('')}
-              ${sec.widget ? widget(sec.widget) : ''}
-              ${sec.list ? `<ul class="list-dot">${sec.list.map(li => `<li>${esc(li)}</li>`).join('')}</ul>` : ''}
-              ${sec.defs ? `<dl class="defs">${sec.defs.map(d => `<div><dt>${esc(d.t)}</dt><dd>${esc(d.d)}</dd></div>`).join('')}</dl>` : ''}
-            </section>`).join('')}
-            <section class="article-section">
-              <h2>Ideas erróneas frecuentes</h2>
-              <div class="myths">${t.myths.map(m => `<div class="myth">
-                <p class="myth-claim">${icon('x')}<span>«${esc(m.myth)}»</span></p>
-                <p class="myth-reality">${icon('check')}<span>${esc(m.reality)}</span></p>
-              </div>`).join('')}</div>
-            </section>
-            <section class="article-section refs">
-              <h2>Lecturas recomendadas</h2>
-              <ul>${t.refs.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
-            </section>
-          </article>
-          <aside class="article-aside">
-            <div class="key-card">
-              <h2>Ideas clave</h2>
-              <ul class="list-check">${t.keyPoints.map(k => `<li>${esc(k)}</li>`).join('')}</ul>
-            </div>
-            <nav class="topic-nav" aria-label="Otros temas">
-              <h2>Otros temas</h2>
-              <ul>${LEARN_TOPICS.map(x => `<li><a href="#/aprende/${x.id}"${x.id === t.id ? ' aria-current="page"' : ''}>${icon(x.icon)}${esc(x.title)}</a></li>`).join('')}</ul>
-            </nav>
-          </aside>
-        </div>
-        <nav class="container pager" aria-label="Tema anterior y siguiente">
-          ${prev ? `<a class="pager-link" href="#/aprende/${prev.id}">${icon('arrow-left')}<span><small>Anterior</small>${esc(prev.title)}</span></a>` : '<span></span>'}
-          ${next ? `<a class="pager-link pager-next" href="#/aprende/${next.id}"><span><small>Siguiente</small>${esc(next.title)}</span>${icon('arrow-right')}</a>` : '<span></span>'}
-        </nav>
       </section>`;
-
     return {
       title: t.title,
       html,
@@ -1271,7 +1209,7 @@ const Views = (() => {
         'replay-flow'(el) {
           const flow = el.closest('.flow');
           flow.classList.remove('is-playing');
-          void flow.offsetWidth; // reinicia la animación CSS
+          void flow.offsetWidth;
           flow.classList.add('is-playing');
         },
         'scale-goal'(el) {
@@ -1286,303 +1224,58 @@ const Views = (() => {
   }
 
   /* =====================================================================
-     MI ENTRENAMIENTO
-     ===================================================================== */
-  function myWorkout(q) {
-    const plans = WorkoutStore.plans();
-    const goal = WorkoutStore.getGoal();
-    const setsPer = WorkoutStore.getSets();
-
-    const toolbar = `<div class="toolbar">
-      <div class="toolbar-field">
-        <span class="label" id="goal-label">Objetivo</span>
-        <div class="seg" role="radiogroup" aria-labelledby="goal-label">
-          ${GOAL_ORDER.map(g => `<button type="button" role="radio" class="seg-btn" aria-checked="${g === goal}" data-action="set-goal" data-goal="${g}" data-focus="mg-${g}">${icon(GOAL_ICONS[g])}${esc(UI.goalName(g))}</button>`).join('')}
-        </div>
-      </div>
-      <div class="toolbar-field">
-        <span class="label" id="sets-label">Series por ejercicio</span>
-        <div class="stepper" role="group" aria-labelledby="sets-label">
-          <button type="button" class="icon-btn" data-action="sets-dec" data-focus="sets-dec" aria-label="Menos series" ${setsPer <= 1 ? 'disabled' : ''}>${icon('minus')}</button>
-          <output class="mono" aria-live="polite">${setsPer}</output>
-          <button type="button" class="icon-btn" data-action="sets-inc" data-focus="sets-inc" aria-label="Más series" ${setsPer >= 6 ? 'disabled' : ''}>${icon('plus')}</button>
-        </div>
-      </div>
-    </div>`;
-
-    const head = `<section class="page-head">
-      <div class="container">
-        <p class="eyebrow">Constructor</p>
-        <h1 tabindex="-1">Mi entrenamiento</h1>
-        <p class="lead">Aquí aparecen los ejercicios que seleccionas en cada sesión. Se guardan en este navegador.</p>
-        ${plans.length ? toolbar : ''}
-      </div>
-    </section>`;
-
-    if (!plans.length) {
-      return {
-        title: 'Mi entrenamiento',
-        html: head + `<section class="section"><div class="container">${UI.emptyState({
-          iconName: 'list', title: 'Todavía no has elegido ejercicios',
-          text: 'Elige un método, entra en un día y selecciona ejercicios para cada grupo muscular. Tu sesión aparecerá aquí.',
-          actions: `<a class="btn btn-primary" href="#/metodos">Elegir un método ${icon('arrow-right')}</a><a class="btn btn-secondary" href="#/ejercicios">Explorar ejercicios</a>`
-        })}</div></section>`,
-        reactive: true
-      };
-    }
-
-    // Agrupa las sesiones por método y variante
-    const combos = [];
-    for (const m of METHODS) for (const v of m.variants) {
-      const days = plans.filter(p => p.m === m.id && p.v === v.id);
-      if (days.length) combos.push({ m, v, days, count: days.reduce((s, d) => s + Object.values(d.groups).flat().length, 0) });
-    }
-    const active = combos.find(c => c.m.id === q.m && c.v.id === q.v) || combos.slice().sort((a, b) => b.count - a.count)[0];
-    const { m, v } = active;
-    const weekly = Planner.weeklySets(m.id, v.id);
-    const freq = Planner.weeklyFrequency(v);
-    const totalSets = Object.values(weekly).reduce((a, b) => a + b, 0);
-    const volGroups = GROUP_ORDER.filter(g => freq[g]);
-    const volMax = Math.max(24, ...Object.values(weekly));
-    const rx = ex => `${setsPer} × ${Planner.repsFor(ex, goal)} · ${GOALS[goal].prescription.rir} · ${GOALS[goal].prescription.rest}`;
-
-    const dayCards = DAYS.filter(d => v.schedule[d.id]).map(day => {
-      const s = Planner.sessionFor(v, day.id);
-      const sel = WorkoutStore.getSelection(m.id, v.id, day.id);
-      const groups = Planner.groupsOf(s);
-      if (!Object.keys(sel).length) {
-        return `<article class="day-card day-card-empty tone-${s.tone}" id="day-${day.id}">
-          <div><p class="eyebrow">${day.name}</p><h3>${esc(s.name)}</h3></div>
-          <a class="btn btn-ghost btn-sm" href="${sessionHref(m.id, v.id, day.id)}">${icon('plus')}<span>Construir sesión</span></a>
-        </article>`;
-      }
-      const missing = groups.filter(g => !(sel[g.id] || []).length);
-      return `<article class="day-card tone-${s.tone}${q.focus === day.id ? ' is-focus' : ''}" id="day-${day.id}">
-        <header class="day-card-head">
-          <div><p class="eyebrow">${day.name}</p><h3>${esc(s.name)} <span class="muted">${esc(s.subtitle)}</span></h3></div>
-          <div class="day-card-actions">
-            <a class="btn btn-ghost btn-sm" href="${sessionHref(m.id, v.id, day.id)}">${icon('edit')}<span>Editar</span></a>
-            <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="delete-session" data-d="${day.id}">${icon('trash')}<span>Eliminar</span></button>
-          </div>
-        </header>
-        ${groups.filter(g => (sel[g.id] || []).length).map(g => `<section class="day-group">
-          <h4><span class="dot tone-${UI.toneOfGroup(g.id)}"></span>${esc(g.group.name)}</h4>
-          <ol class="ex-list">${sel[g.id].map((exId, i) => {
-            const ex = EXERCISE_INDEX[exId];
-            return `<li>
-              <span class="ex-list-num mono">${i + 1}</span>
-              <div class="ex-list-main"><a href="${UI.exerciseHref(ex, { m: m.id, v: v.id, d: day.id, g: g.id })}">${esc(ex.name)}</a><span class="rx mono">${esc(rx(ex))}</span></div>
-              <button type="button" class="icon-btn" data-action="remove-from-plan" data-d="${day.id}" data-g="${g.id}" data-ex="${ex.id}" data-focus="rm-${day.id}-${ex.id}" aria-label="Eliminar ${esc(ex.name)} del ${day.name.toLowerCase()}">${icon('x')}</button>
-            </li>`;
-          }).join('')}</ol>
-        </section>`).join('')}
-        ${missing.length ? `<p class="day-missing">${icon('info')}<span>Sin ejercicios para: ${missing.map(g => esc(g.group.name)).join(', ')}.</span> <a href="${sessionHref(m.id, v.id, day.id, missing[0].id)}">Añadir</a></p>` : ''}
-      </article>`;
-    }).join('');
-
-    const html = head + `
-      <section class="section">
-        <div class="container">
-          ${combos.length > 1 ? `<div class="seg plan-tabs" role="group" aria-label="Planes guardados">
-            ${combos.map(c => `<a class="seg-btn" href="#/mi-entrenamiento${UI.query({ m: c.m.id, v: c.v.id })}" aria-current="${c === active ? 'true' : 'false'}">${esc(c.m.name)} · ${esc(c.v.name)} <span class="mono">${c.count}</span></a>`).join('')}
-          </div>` : ''}
-          <div class="plan-head tone-${m.tone}">
-            <div>
-              <p class="eyebrow">${esc(m.name)} · ${esc(v.name)}</p>
-              <h2>Tu semana</h2>
-              ${UI.weekStrip(v)}
-            </div>
-            <dl class="plan-stats">
-              <div><dt>Sesiones con ejercicios</dt><dd class="mono">${active.days.length} / ${Planner.trainingDays(v).length}</dd></div>
-              <div><dt>Ejercicios</dt><dd class="mono">${active.count}</dd></div>
-              <div><dt>Series semanales</dt><dd class="mono">${totalSets}</dd></div>
-            </dl>
-            <div class="plan-actions">
-              <button type="button" class="btn btn-secondary btn-sm" data-action="copy-summary">${icon('copy')}<span>Copiar resumen</span></button>
-              <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="clear-all">${icon('trash')}<span>Limpiar entrenamiento</span></button>
-            </div>
-          </div>
-          <div class="workout-layout">
-            <div class="day-cards">${dayCards}</div>
-            <aside class="volume-card" aria-labelledby="vol-title">
-              <h2 id="vol-title">Volumen semanal estimado</h2>
-              <p class="muted small">Series por grupo muscular con ${UI.plural(setsPer, 'serie', 'series')} por ejercicio.</p>
-              <div class="vol-chart" style="--ref-l:${(10 / volMax) * 100}%;--ref-w:${(10 / volMax) * 100}%">
-                ${volGroups.map(g => `<div class="vol-row tone-${UI.toneOfGroup(g)}">
-                  <span class="vol-name">${esc(MUSCLE_GROUPS[g].short || MUSCLE_GROUPS[g].name)}</span>
-                  <span class="vol-bar"><span style="width:${((weekly[g] || 0) / volMax) * 100}%"></span></span>
-                  <span class="vol-val mono">${weekly[g] || 0}</span>
-                </div>`).join('')}
-              </div>
-              <p class="vol-legend"><span class="sw sw-ref"></span>Referencia común para hipertrofia: 10–20 series semanales</p>
-              <p class="callout small">${icon('info')}<span>Es una estimación: solo cuenta los ejercicios elegidos para cada grupo. Los músculos secundarios reciben además trabajo indirecto. La cantidad adecuada varía entre personas.</span></p>
-            </aside>
-          </div>
-        </div>
-      </section>`;
-
-    function summaryText() {
-      const lines = [`FIT SPLIT · ${m.name} (${v.name})`, `Objetivo: ${GOALS[goal].name} · ${UI.plural(setsPer, 'serie', 'series')} por ejercicio`, ''];
-      for (const day of DAYS) {
-        const sel = WorkoutStore.getSelection(m.id, v.id, day.id);
-        if (!Object.keys(sel).length) continue;
-        const s = Planner.sessionFor(v, day.id);
-        lines.push(`${day.name.toUpperCase()} · ${s.name.toUpperCase()}`);
-        for (const g of Planner.groupsOf(s)) {
-          if (!(sel[g.id] || []).length) continue;
-          lines.push(g.group.name);
-          sel[g.id].forEach((id, i) => lines.push(`  ${i + 1}. ${EXERCISE_INDEX[id].name} — ${rx(EXERCISE_INDEX[id])}`));
-        }
-        lines.push('');
-      }
-      return lines.join('\n');
-    }
-
-    return {
-      title: 'Mi entrenamiento',
-      html,
-      reactive: true,
-      mount(root) {
-        if (q.focus) {
-          const el = root.querySelector(`#day-${q.focus}`);
-          if (el) setTimeout(() => el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' }), 60);
-        }
-      },
-      actions: {
-        'set-goal'(el) { WorkoutStore.setGoal(el.dataset.goal); },
-        'sets-dec'() { WorkoutStore.setSets(WorkoutStore.getSets() - 1); },
-        'sets-inc'() { WorkoutStore.setSets(WorkoutStore.getSets() + 1); },
-        'remove-from-plan'(el) {
-          const ex = EXERCISE_INDEX[el.dataset.ex];
-          WorkoutStore.remove(m.id, v.id, el.dataset.d, el.dataset.g, ex.id);
-          UI.toast(`${ex.name} eliminado.`);
-        },
-        async 'delete-session'(el) {
-          const day = DAYS.find(d => d.id === el.dataset.d);
-          const ok = await UI.confirm({
-            title: 'Eliminar sesión',
-            text: `Se quitarán todos los ejercicios del ${day.name.toLowerCase()}.`,
-            confirmLabel: 'Eliminar sesión', danger: true
-          });
-          if (ok) { WorkoutStore.clearSession(m.id, v.id, day.id); UI.toast('Sesión eliminada.'); }
-        },
-        async 'clear-all'() {
-          const ok = await UI.confirm({
-            title: 'Limpiar entrenamiento',
-            text: 'Se eliminarán todas las sesiones de todos los métodos. Esta acción no se puede deshacer.',
-            confirmLabel: 'Limpiar todo', danger: true
-          });
-          if (ok) { WorkoutStore.clearAll(); UI.toast('Entrenamiento vaciado.'); }
-        },
-        async 'copy-summary'() {
-          const text = summaryText();
-          try {
-            await navigator.clipboard.writeText(text);
-            UI.toast('Resumen copiado al portapapeles.');
-          } catch (e) {
-            UI.openDialog(`<h2 class="dialog-title">Resumen de tu entrenamiento</h2>
-              <p class="dialog-text">Tu navegador no permitió copiar automáticamente. Selecciona el texto y cópialo.</p>
-              <textarea class="summary-text mono" readonly rows="12">${esc(text)}</textarea>
-              <div class="dialog-actions"><button type="button" class="btn btn-primary" data-dialog-close>Cerrar</button></div>`);
-            const ta = document.querySelector('#dialog textarea');
-            if (ta) ta.select();
-          }
-        }
-      }
-    };
-  }
-
-  /* =====================================================================
      SOBRE FIT SPLIT
      ===================================================================== */
   function about() {
     const layers = [
-      { name: 'Datos', files: ['data.js', 'exercises.js', 'learn.js'], text: 'Métodos, sesiones, ejercicios y contenido educativo como objetos de JavaScript.' },
-      { name: 'Lógica', files: ['workouts.js'], text: 'Planner calcula sesiones, límites y volumen. WorkoutStore guarda la selección en localStorage.' },
-      { name: 'Animaciones', files: ['animations.js'], text: `Figura en SVG con cinemática inversa y ${Animations.presets.length} patrones de movimiento.` },
-      { name: 'Interfaz', files: ['ui.js', 'views.js', 'app.js'], text: 'Componentes reutilizables, vistas y un enrutador por hash.' },
-      { name: 'Estilos', files: ['styles.css', 'responsive.css'], text: 'Diseño oscuro con variables CSS y adaptación a móvil y tablet.' }
+      ['Datos', 'data.js · exercises.js · learn.js', 'Métodos, sesiones, ejercicios, recomendados y contenido educativo como objetos de JavaScript.'],
+      ['Lógica', 'workouts.js', 'Planner calcula sesiones, límites y el orden automático de la rutina. WorkoutStore guarda el plan y el entrenamiento en curso en localStorage.'],
+      ['Animaciones', 'animations.js', `Cuerpo transparente en SVG con músculos visibles, cinemática inversa y ${Animations.presets.length} patrones de movimiento.`],
+      ['Interfaz', 'ui.js · views.js · app.js', 'Componentes reutilizables, vistas por paso y un enrutador por hash con botón de retroceso.'],
+      ['Estilos', 'styles.css · responsive.css', 'Diseño oscuro con variables CSS, adaptado a computador, tablet y teléfono.']
     ];
     const html = `
-      <section class="page-head">
+      <section class="step-page">
         <div class="container">
-          <p class="eyebrow">Sobre el proyecto</p>
-          <h1 tabindex="-1">Sobre FIT SPLIT</h1>
-          <p class="lead">FIT SPLIT es una plataforma interactiva para aprender sobre métodos de entrenamiento, comprender los fundamentos del ejercicio y construir sesiones según diferentes objetivos.</p>
-        </div>
-      </section>
-      <section class="section">
-        <div class="container content-grid">
-          <div class="prose">
-            <h2>Por qué existe</h2>
-            <p>Mucha información sobre entrenamiento se presenta como reglas absolutas: un rango de repeticiones “para crecer”, una rutina “perfecta”, ir siempre al fallo. FIT SPLIT intenta lo contrario: explicar el porqué de cada decisión y mostrar dónde hay consenso y dónde hay matices.</p>
-            <p>La experiencia está pensada como un recorrido: eliges un método, entras en un día, eliges un músculo, aprendes cada ejercicio con su animación y construyes tu sesión según tu objetivo.</p>
+          <div class="page-title">
+            <h1 tabindex="-1">Sobre FIT SPLIT</h1>
+            <p class="lead">Una plataforma interactiva para aprender sobre métodos de entrenamiento, comprender los fundamentos del ejercicio y entrenar con un plan según tu objetivo.</p>
           </div>
-          <div class="aside-card">
-            <h3>${icon('shield')}Aviso importante</h3>
-            <p>El contenido es educativo y general. No sustituye la valoración de un profesional sanitario o del ejercicio. Si tienes una lesión, una condición médica o dudas, consulta antes de entrenar.</p>
-          </div>
-        </div>
-      </section>
-      <section class="section section-alt">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Principios', title: 'Cómo presentamos la información' })}
-          <div class="card-grid card-grid-4">
-            ${[
-              ['book', 'Basada en evidencia', 'Las recomendaciones se apoyan en la literatura científica y en consensos profesionales.'],
-              ['sliders', 'Sin absolutos', 'Los rangos son orientativos y se explica cuándo hay incertidumbre o varios enfoques razonables.'],
-              ['eye', 'Aprender viendo', 'Cada ejercicio tiene animación por fases, técnica paso a paso y errores frecuentes.'],
-              ['target', 'Tu decisión', 'Tú eliges método, objetivo y ejercicios. La plataforma orienta, no impone.']
-            ].map(([ic, t, d]) => `<div class="principle">${icon(ic)}<h3>${t}</h3><p>${d}</p></div>`).join('')}
-          </div>
-        </div>
-      </section>
-      <section class="section">
-        <div class="container">
-          ${sectionHead({ eyebrow: 'Arquitectura', title: 'Cómo está construido', text: 'Una aplicación web de una sola página hecha con HTML5, CSS3 y JavaScript moderno, sin backend ni dependencias externas. Funciona en el navegador y guarda la selección del usuario en localStorage.' })}
-          <ol class="arch">
-            ${layers.map(l => `<li class="arch-layer">
-              <h3>${l.name}</h3>
-              <p>${l.text}</p>
-              <p class="arch-files">${l.files.map(f => `<code>${f}</code>`).join('')}</p>
-            </li>`).join('')}
-          </ol>
-          <div class="feature-list">
-            ${[
-              ['code', 'Enrutador por hash', 'Cada vista tiene su URL (por ejemplo #/metodos/ppl/ppl6/lun/pecho) y el botón atrás del navegador funciona.'],
-              ['layers', 'Guiado por datos', 'Añadir un método o un ejercicio solo requiere agregar un objeto a los datos; las vistas se generan solas.'],
-              ['play', 'Animaciones propias', 'Las figuras se calculan en cada fotograma con cinemática inversa: los codos y rodillas se ajustan para mantener la longitud de cada segmento.'],
-              ['shield', 'Accesible', 'HTML semántico, botones reales, navegación por teclado, estados visibles y respeto a la preferencia de movimiento reducido.']
-            ].map(([ic, t, d]) => `<div class="feature">${icon(ic)}<div><h3>${t}</h3><p>${d}</p></div></div>`).join('')}
-          </div>
-        </div>
-      </section>
-      <section class="section section-alt">
-        <div class="container narrow center">
-          <h2>Empieza a explorar</h2>
-          <p class="muted">Elige un método y construye tu primera sesión.</p>
-          <div class="btn-row center">
-            <a class="btn btn-primary" href="#/metodos">Explorar métodos ${icon('arrow-right')}</a>
-            <a class="btn btn-secondary" href="#/aprende">Ir a Aprende</a>
+          <div class="about-grid">
+            <div class="side-box">${UI.tabs('about', [
+              { id: 'porque', label: 'Por qué existe', html: `<p>Mucha información sobre entrenamiento se presenta como reglas absolutas. FIT SPLIT explica el porqué de cada decisión y muestra dónde hay consenso y dónde hay matices.</p><p>La experiencia es un recorrido guiado: defines tu objetivo, eliges método y frecuencia, seleccionas los ejercicios del día y entrenas paso a paso.</p>` },
+              { id: 'principios', label: 'Principios', html: `<ul class="list-check">
+                <li><strong>Basada en evidencia:</strong> recomendaciones apoyadas en la literatura científica.</li>
+                <li><strong>Sin absolutos:</strong> los rangos son orientativos y se explican los matices.</li>
+                <li><strong>Aprender viendo:</strong> cada ejercicio tiene animación por fases con los músculos visibles.</li>
+                <li><strong>Lo esencial primero:</strong> sin alimentación y constancia no hay resultados.</li></ul>` },
+              { id: 'arquitectura', label: 'Cómo está construido', html: `<p>Aplicación web de una sola página hecha con HTML5, CSS3 y JavaScript moderno, sin backend ni dependencias.</p>
+                <ol class="arch">${layers.map(([n, f, d]) => `<li><strong>${n}</strong><code>${f}</code><span>${d}</span></li>`).join('')}</ol>` }
+            ])}</div>
+            <div class="side-box">
+              <h2>${icon('shield')}Aviso importante</h2>
+              <p class="muted">El contenido es educativo y general. No sustituye la valoración de un profesional sanitario, de la nutrición o del ejercicio. Si tienes una lesión, una condición médica o dudas, consulta antes de entrenar.</p>
+            </div>
           </div>
         </div>
       </section>`;
     return { title: 'Sobre FIT SPLIT', html };
   }
 
-  /* =====================================================================
-     PÁGINA NO ENCONTRADA
-     ===================================================================== */
   function notFound() {
     return {
       title: 'Página no encontrada',
-      html: `<section class="section"><div class="container">${UI.emptyState({
+      html: `<section class="step-page"><div class="container">${UI.emptyState({
         iconName: 'alert', title: 'Página no encontrada',
         text: 'La dirección no corresponde a ninguna sección de FIT SPLIT.',
-        actions: `<a class="btn btn-primary" href="#/">Volver al inicio</a><a class="btn btn-secondary" href="#/metodos">Ver métodos</a>`
+        actions: `<a class="btn btn-primary" href="#/">Volver al inicio</a>`
       })}</div></section>`
     };
   }
 
-  return { home, methods, method, session, exercise, exercises, learn, topic, myWorkout, about, notFound };
+  return {
+    setRenderer, openExercise,
+    home, goalStep, methodStep, frequencyStep, dayStep, player, finish,
+    exercises, exercise, learn, topic, about, notFound
+  };
 })();

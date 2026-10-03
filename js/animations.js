@@ -841,143 +841,210 @@ const Animations = (() => {
   }
 
   /* ---------------------------------------------------------------------
-     MÚSCULOS RESALTADOS
-     Cada músculo se dibuja como una banda paralela a un segmento del
-     cuerpo, desplazada hacia su cara anterior (front) o posterior (back).
+     CUERPO TRANSPARENTE CON MÚSCULOS
+     La figura se dibuja como un cuerpo "de cristal": un contorno claro y un
+     relleno oscuro semitransparente. Dentro se ven los huesos (tenues) y
+     todos los músculos. Los que trabaja el ejercicio se iluminan con el color
+     del tipo de sesión: brillantes los principales y suaves los secundarios.
      --------------------------------------------------------------------- */
-  const SIDE_MUSCLES = {
-    chest: { seg: 'torso', side: 1, t: [0.62, 0.9], off: 6, w: 10 },
-    abs: { seg: 'torso', side: 1, t: [0.15, 0.5], off: 6, w: 8 },
-    lats: { seg: 'torso', side: -1, t: [0.42, 0.82], off: 6, w: 11 },
-    upperBack: { seg: 'torso', side: -1, t: [0.82, 1.0], off: 5, w: 10 },
-    lowerBack: { seg: 'torso', side: -1, t: [0.08, 0.4], off: 6, w: 8 },
-    glutes: { seg: 'torso', side: -1, t: [-0.12, 0.06], off: 7, w: 14 },
-    frontDelt: { joint: 'sh', side: 1, off: 5, r: 7 },
-    sideDelt: { joint: 'sh', side: 0, off: 0, r: 8 },
-    rearDelt: { joint: 'sh', side: -1, off: 5, r: 7 },
-    biceps: { seg: 'upperArm', side: 1, t: [0.2, 0.85], off: 3, w: 7 },
-    triceps: { seg: 'upperArm', side: -1, t: [0.12, 0.85], off: 3, w: 8 },
-    forearm: { seg: 'forearm', side: 1, t: [0.08, 0.55], off: 2, w: 7 },
-    quads: { seg: 'thigh', side: 1, t: [0.12, 0.88], off: 4, w: 9 },
-    hams: { seg: 'thigh', side: -1, t: [0.12, 0.85], off: 4, w: 9 },
-    calves: { seg: 'shin', side: -1, t: [0.1, 0.55], off: 4, w: 9 }
+
+  /* Silueta: lista de formas → contorno y relleno fusionados en una pieza */
+  function silhouette(shapes, extraCls = '') {
+    let outline = '', fill = '';
+    for (const s of shapes) {
+      if (s.l) {
+        outline += line(s.l[0], s.l[1], 'fx-skin-line', s.w + 3.2);
+        fill += line(s.l[0], s.l[1], 'fx-skin', s.w);
+      } else if (s.p) {
+        outline += poly(s.p, 'fx-skin-line-poly');
+        fill += poly(s.p, 'fx-skin-poly');
+      } else if (s.c) {
+        outline += circle(s.c, s.r + 1.6, 'fx-skin-line-fill');
+        fill += circle(s.c, s.r, 'fx-skin-fill');
+      } else if (s.e) {
+        outline += ellipse(s.e.c, s.e.rx + 1.6, s.e.ry + 1.6, 'fx-skin-line-fill');
+        fill += ellipse(s.e.c, s.e.rx, s.e.ry, 'fx-skin-fill');
+      }
+    }
+    return `<g class="fx-sil ${extraCls}"><g>${outline}</g><g class="fx-sil-fill">${fill}</g></g>`;
+  }
+
+  /* Vientre muscular: forma de huso entre p0 y p1 con media anchura w */
+  function belly(p0, p1, w, cls) {
+    const mid = lerpP(p0, p1, 0.5), u = unit(ang(p0, p1)), n = [-u[1], u[0]];
+    const c1 = add(mid, mul(n, w * 2)), c2 = add(mid, mul(n, -w * 2));
+    return `<path class="${cls}" d="M${f(p0[0])} ${f(p0[1])}Q${f(c1[0])} ${f(c1[1])} ${f(p1[0])} ${f(p1[1])}Q${f(c2[0])} ${f(c2[1])} ${f(p0[0])} ${f(p0[1])}Z"/>`;
+  }
+
+  /* Clase de un músculo según si el ejercicio lo trabaja */
+  function mc(hl, ...keys) {
+    if (keys.some(k => hl.p.includes(k))) return 'fx-m fx-m-p';
+    if (keys.some(k => hl.s.includes(k))) return 'fx-m fx-m-s';
+    return 'fx-m';
+  }
+
+  /* Normal anterior de una extremidad (apunta hacia abajo desde la articulación) */
+  const limbN = (a, b) => { const u = unit(ang(a, b)); return [u[1], -u[0]]; };
+  const onSeg = (a, b, t0, t1, off, w, cls) => {
+    const n = mul(limbN(a, b), off);
+    return belly(add(lerpP(a, b, t0), n), add(lerpP(a, b, t1), n), w, cls);
   };
+  const bones = segs =>
+    segs.map(([a, b]) => line(a, b, 'fx-bone', 1.6)).join('') +
+    segs.map(([a]) => circle(a, 2.2, 'fx-joint')).join('');
 
-  function segFor(sk, seg) {
-    switch (seg) {
-      case 'torso': return [sk.hip, sk.sh];
-      case 'upperArm': return [sk.sh, sk.el];
-      case 'forearm': return [sk.el, sk.ha];
-      case 'thigh': return [sk.hip, sk.kn];
-      case 'shin': return [sk.kn, sk.an];
-    }
-    return null;
+  /* ---- Vista lateral ---- */
+  function torsoShape(hip, sh) {
+    const F = frame(hip, sh);
+    const P = (t, d) => add(lerpP(hip, sh, t), mul(F.front, d));
+    return [P(-0.08, 10), P(0.3, 10.5), P(0.55, 12), P(0.78, 15.5), P(0.95, 12), P(1.05, 6),
+      P(1.05, -7), P(0.92, -13.5), P(0.62, -12.5), P(0.38, -10), P(0.12, -13), P(-0.06, -16), P(-0.16, -9)];
   }
 
-  /* Normal anterior de un segmento. El torso apunta hacia arriba (cadera →
-     hombro) y las extremidades hacia abajo, por eso la rotación difiere. */
-  function frontNormal(a, b, isTorso) {
-    const u = unit(ang(a, b));
-    return isTorso ? [-u[1], u[0]] : [u[1], -u[0]];
+  function torsoMuscles(hip, sh, hl) {
+    const F = frame(hip, sh);
+    const P = (t, d) => add(lerpP(hip, sh, t), mul(F.front, d));
+    return belly(P(0.14, -9.5), P(-0.16, -8.5), 6.2, mc(hl, 'glutes')) +
+      belly(P(0.06, -6.5), P(0.44, -7), 2.6, mc(hl, 'lowerBack')) +
+      belly(P(0.42, -8.2), P(0.86, -9.4), 4, mc(hl, 'lats')) +
+      belly(P(0.8, -7.8), P(1.07, -3.2), 3.3, mc(hl, 'upperBack')) +
+      belly(P(0.08, 6.8), P(0.56, 7.4), 2.7, mc(hl, 'abs')) +
+      belly(P(0.6, 9.4), P(0.97, 8), 4.5, mc(hl, 'chest'));
   }
 
-  function sideMuscle(sk, key, cls) {
-    const m = SIDE_MUSCLES[key];
-    if (!m) return '';
-    if (m.joint) {
-      const n = frontNormal(sk.hip, sk.sh, true);
-      return circle(add(sk[m.joint], mul(n, m.side * m.off)), m.r, cls);
-    }
-    const [a, b] = segFor(sk, m.seg);
-    const n = mul(frontNormal(a, b, m.seg === 'torso'), m.side * m.off);
-    return line(add(lerpP(a, b, m.t[0]), n), add(lerpP(a, b, m.t[1]), n), cls, m.w);
+  function armMuscles(sh, el, ha, hl) {
+    return onSeg(sh, el, 0.32, 0.9, -2.6, 3.4, mc(hl, 'triceps')) +
+      onSeg(sh, el, 0.36, 0.88, 2.6, 3.2, mc(hl, 'biceps')) +
+      onSeg(sh, el, -0.12, 0.36, -2.4, 3.2, mc(hl, 'rearDelt')) +
+      onSeg(sh, el, -0.12, 0.36, 2.4, 3.2, mc(hl, 'frontDelt')) +
+      onSeg(sh, el, -0.14, 0.32, 0, 2.8, mc(hl, 'sideDelt')) +
+      onSeg(el, ha, 0.04, 0.62, 1.2, 3.1, mc(hl, 'forearm'));
   }
 
-  const TORSO_KEYS = ['chest', 'abs', 'lats', 'upperBack', 'lowerBack', 'glutes'];
-  const LEG_KEYS = ['quads', 'hams', 'calves'];
-  const ARM_KEYS = ['frontDelt', 'sideDelt', 'rearDelt', 'biceps', 'triceps', 'forearm'];
-
-  function overlays(sk, hl, keys, fn) {
-    let s = '';
-    for (const k of hl.s) if (keys.includes(k)) s += fn(sk, k, 'fx-hl fx-hl-s');
-    for (const k of hl.p) if (keys.includes(k)) s += fn(sk, k, 'fx-hl fx-hl-p');
-    return s;
+  function legMuscles(hip, kn, an, hl) {
+    return onSeg(hip, kn, 0.14, 0.9, -3.6, 5, mc(hl, 'hams')) +
+      onSeg(hip, kn, 0.08, 0.92, 3.6, 5.4, mc(hl, 'quads')) +
+      onSeg(kn, an, 0.1, 0.78, 2.4, 1.8, 'fx-m') +
+      onSeg(kn, an, 0.06, 0.58, -2.6, 4.3, mc(hl, 'calves'));
   }
 
-  /* --------------------------- Figura lateral --------------------------- */
   function sideFigure(sk, hl) {
     const F = frame(sk.hip, sk.sh);
     const tilt = sk.tilt || 0;
-    const neck = pt(sk.sh, F.a + tilt, L.NECK * 0.9);
     const head = pt(sk.sh, F.a + tilt, L.NECK + L.HEAD);
+    const neckEnd = pt(sk.sh, F.a + tilt, L.NECK + 5);
+    const nose = add(head, mul(unit(F.a + tilt + 90), 12.5));
     const toe = sk.to || add(sk.an, [20, 6]);
     let s = '';
-    // Extremidades lejanas (más oscuras, detrás del torso)
-    if (sk.kn2) {
-      s += line(sk.hip, sk.kn2, 'fx-far', 13) + line(sk.kn2, sk.an2, 'fx-far', 11) +
-        line(sk.an2, sk.to2 || add(sk.an2, [18, 6]), 'fx-far', 7);
+    // Extremidades del lado lejano: más tenues, detrás del cuerpo
+    if (sk.kn2 || sk.el2) {
+      const far = [];
+      let fm = '';
+      if (sk.kn2) {
+        far.push({ l: [sk.hip, sk.kn2], w: 18 }, { l: [sk.kn2, sk.an2], w: 13 }, { l: [sk.an2, sk.to2 || add(sk.an2, [18, 6])], w: 7 });
+        fm += legMuscles(sk.hip, sk.kn2, sk.an2, hl);
+      }
+      if (sk.el2) {
+        far.push({ l: [sk.sh, sk.el2], w: 12 }, { l: [sk.el2, sk.ha2], w: 10 }, { c: sk.ha2, r: 5 });
+        fm += armMuscles(sk.sh, sk.el2, sk.ha2, hl);
+      }
+      s += `<g class="fx-far">${silhouette(far)}${fm}</g>`;
     }
-    if (sk.el2) s += line(sk.sh, sk.el2, 'fx-far', 10) + line(sk.el2, sk.ha2, 'fx-far', 9) + circle(sk.ha2, 5, 'fx-far-fill');
-    // Torso, cuello y cabeza
-    s += line(sk.hip, sk.sh, 'fx-body', 24) + circle(sk.hip, 12, 'fx-body-fill') +
-      line(sk.sh, neck, 'fx-body', 10) + circle(head, L.HEAD, 'fx-head');
-    s += overlays(sk, hl, TORSO_KEYS, sideMuscle);
-    // Pierna cercana
-    s += line(sk.hip, sk.kn, 'fx-limb', 14) + line(sk.kn, sk.an, 'fx-limb', 12) + line(sk.an, toe, 'fx-limb', 8);
-    s += overlays(sk, hl, LEG_KEYS, sideMuscle);
-    // Brazo cercano
-    s += line(sk.sh, sk.el, 'fx-limb', 11) + line(sk.el, sk.ha, 'fx-limb', 10) + circle(sk.ha, 5.5, 'fx-hand');
-    s += overlays(sk, hl, ARM_KEYS, sideMuscle);
+    // Torso, cabeza y pierna cercana como una sola silueta
+    s += silhouette([
+      { p: torsoShape(sk.hip, sk.sh) },
+      { l: [sk.sh, neckEnd], w: 10 },
+      { c: head, r: L.HEAD }, { c: nose, r: 3 },
+      { l: [sk.hip, sk.kn], w: 19 }, { l: [sk.kn, sk.an], w: 14 }, { l: [sk.an, toe], w: 7.5 }
+    ]);
+    s += bones([[sk.hip, sk.sh], [sk.hip, sk.kn], [sk.kn, sk.an]]);
+    s += torsoMuscles(sk.hip, sk.sh, hl) + legMuscles(sk.hip, sk.kn, sk.an, hl);
+    // Brazo cercano, por delante del torso
+    s += silhouette([{ l: [sk.sh, sk.el], w: 13 }, { l: [sk.el, sk.ha], w: 11 }, { c: sk.ha, r: 5.5 }], 'fx-arm');
+    s += bones([[sk.sh, sk.el], [sk.el, sk.ha]]);
+    s += armMuscles(sk.sh, sk.el, sk.ha, hl);
     return s;
   }
 
-  /* ----------------------- Figura frontal / posterior ----------------------- */
-  function frontMuscle(sk, key, cls) {
+  /* ---- Vistas frontal, posterior y desde la cabecera ---- */
+  function frontTorso(sk) {
+    const h = sk.hipL[1] - sk.shL[1];
+    const mh = lerpP(sk.hipL, sk.hipR, 0.5);
+    return [add(sk.shL, [-3, -5]), add(sk.shR, [3, -5]), add(sk.shR, [1, h * 0.35]), add(sk.hipR, [2, -h * 0.3]),
+      add(sk.hipR, [7, 4]), add(mh, [0, 10]), add(sk.hipL, [-7, 4]), add(sk.hipL, [-2, -h * 0.3]), add(sk.shL, [-1, h * 0.35])];
+  }
+
+  function frontMuscles(sk, hl) {
+    const view = sk.view;
     const m = lerpP(sk.shL, sk.shR, 0.5);
-    switch (key) {
-      case 'chest':
-        return ellipse(add(m, [-13, 17]), 12, 8, cls) + ellipse(add(m, [13, 17]), 12, 8, cls);
-      case 'frontDelt': case 'sideDelt': case 'rearDelt':
-        return circle(sk.shL, 9, cls) + circle(sk.shR, 9, cls);
-      case 'upperBack':
-        // En vista frontal solo se ve el trapecio superior, junto al cuello
-        if (sk.view === 'front') {
-          const neck = add(m, [0, -12]);
-          return line(neck, add(sk.shL, [5, -2]), cls, 7) + line(neck, add(sk.shR, [-5, -2]), cls, 7);
-        }
-        return poly([add(sk.shL, [9, 3]), add(sk.shR, [-9, 3]), add(m, [9, 30]), add(m, [-9, 30])], cls);
-      case 'lats':
-        return poly([add(sk.shL, [6, 10]), add(m, [-6, 18]), add(sk.hipL, [2, -22])], cls) +
-          poly([add(sk.shR, [-6, 10]), add(m, [6, 18]), add(sk.hipR, [-2, -22])], cls);
-      case 'biceps': case 'triceps':
-        return line(lerpP(sk.shL, sk.elL, 0.2), lerpP(sk.shL, sk.elL, 0.85), cls, 7) +
-          line(lerpP(sk.shR, sk.elR, 0.2), lerpP(sk.shR, sk.elR, 0.85), cls, 7);
+    let s = '';
+    if (view === 'head') {
+      // Pectorales vistos desde la cabecera del banco
+      const c = sk.torsoEllipse.c;
+      return ellipse(add(c, [-15, -4]), 13, 6, mc(hl, 'chest')) + ellipse(add(c, [15, -4]), 13, 6, mc(hl, 'chest'));
     }
-    return '';
+    const h = sk.hipL[1] - sk.shL[1];
+    const mh = lerpP(sk.hipL, sk.hipR, 0.5);
+    if (view === 'front') {
+      s += belly(add(m, [0, -8]), add(sk.shL, [6, -3]), 2.3, mc(hl, 'upperBack')) +
+        belly(add(m, [0, -8]), add(sk.shR, [-6, -3]), 2.3, mc(hl, 'upperBack'));
+      s += ellipse(add(m, [-12.5, h * 0.2]), 12, 8, mc(hl, 'chest')) + ellipse(add(m, [12.5, h * 0.2]), 12, 8, mc(hl, 'chest'));
+      for (let r = 0; r < 3; r++) {
+        for (const dx of [-5.5, 5.5]) {
+          s += `<rect class="${mc(hl, 'abs')}" x="${f(m[0] + dx - 4.5)}" y="${f(sk.shL[1] + h * (0.4 + r * 0.15))}" width="9" height="${f(h * 0.12)}" rx="3"/>`;
+        }
+      }
+      s += belly(add(sk.shL, [6, h * 0.45]), add(sk.hipL, [0, -5]), 2.6, mc(hl, 'abs')) +
+        belly(add(sk.shR, [-6, h * 0.45]), add(sk.hipR, [0, -5]), 2.6, mc(hl, 'abs'));
+    } else {
+      // Vista posterior
+      s += poly([add(m, [0, -8]), add(sk.shR, [-4, 2]), add(m, [0, h * 0.55]), add(sk.shL, [4, 2])], mc(hl, 'upperBack'));
+      s += belly(add(sk.shL, [3, h * 0.22]), add(sk.hipL, [3, -h * 0.22]), 4.6, mc(hl, 'lats')) +
+        belly(add(sk.shR, [-3, h * 0.22]), add(sk.hipR, [-3, -h * 0.22]), 4.6, mc(hl, 'lats'));
+      s += belly(add(m, [-4, h * 0.58]), add(mh, [-4, -2]), 2.4, mc(hl, 'lowerBack')) +
+        belly(add(m, [4, h * 0.58]), add(mh, [4, -2]), 2.4, mc(hl, 'lowerBack'));
+      if (sk.knL) s += ellipse(add(sk.hipL, [-2, 7]), 10.5, 9, mc(hl, 'glutes')) + ellipse(add(sk.hipR, [2, 7]), 10.5, 9, mc(hl, 'glutes'));
+    }
+    if (sk.knL) {
+      for (const [hp, kn, an] of [[sk.hipL, sk.knL, sk.anL], [sk.hipR, sk.knR, sk.anR]]) {
+        s += view === 'front'
+          ? onSeg(hp, kn, 0.1, 0.92, 0, 6, mc(hl, 'quads')) + onSeg(kn, an, 0.08, 0.6, 0, 3.6, mc(hl, 'calves'))
+          : onSeg(hp, kn, 0.18, 0.9, 0, 5.6, mc(hl, 'hams')) + onSeg(kn, an, 0.06, 0.56, 0, 5, mc(hl, 'calves'));
+      }
+    }
+    return s;
+  }
+
+  function frontArmMuscles(sk, hl) {
+    let s = '';
+    for (const [sh, el, ha] of [[sk.shL, sk.elL, sk.haL], [sk.shR, sk.elR, sk.haR]]) {
+      s += onSeg(sh, el, 0.34, 0.88, 0, 3.5, sk.view === 'rear' ? mc(hl, 'triceps') : mc(hl, 'biceps')) +
+        onSeg(el, ha, 0.05, 0.6, 0, 3, mc(hl, 'forearm')) +
+        onSeg(sh, el, -0.16, 0.34, 0, 5.4, sk.view === 'rear' ? mc(hl, 'rearDelt', 'sideDelt') : mc(hl, 'frontDelt', 'sideDelt'));
+    }
+    return s;
   }
 
   function frontFigure(sk, hl) {
-    let s = '';
+    const m = lerpP(sk.shL, sk.shR, 0.5);
+    const body = [];
     if (sk.knL) {
-      s += line(sk.hipL, sk.knL, 'fx-limb', 14) + line(sk.knL, sk.anL, 'fx-limb', 12) +
-        line(sk.hipR, sk.knR, 'fx-limb', 14) + line(sk.knR, sk.anR, 'fx-limb', 12) +
-        line(sk.anL, add(sk.anL, [-12, 6]), 'fx-limb', 8) + line(sk.anR, add(sk.anR, [12, 6]), 'fx-limb', 8);
+      body.push(
+        { l: [sk.hipL, sk.knL], w: 19 }, { l: [sk.knL, sk.anL], w: 14 }, { l: [sk.anL, add(sk.anL, [-11, 6])], w: 7.5 },
+        { l: [sk.hipR, sk.knR], w: 19 }, { l: [sk.knR, sk.anR], w: 14 }, { l: [sk.anR, add(sk.anR, [11, 6])], w: 7.5 });
     }
-    const head = circle(sk.head, L.HEAD, 'fx-head');
-    if (sk.headBehind) s += head;
-    if (sk.torsoEllipse) {
-      s += ellipse(sk.torsoEllipse.c, sk.torsoEllipse.rx, sk.torsoEllipse.ry, 'fx-torso');
-    } else {
-      const m = lerpP(sk.shL, sk.shR, 0.5);
-      s += poly([sk.shL, sk.shR, sk.hipR, sk.hipL], 'fx-torso');
-      if (!sk.headBehind) s += line(m, add(sk.head, [0, 8]), 'fx-body', 10);
-    }
-    s += overlays(sk, hl, ['chest', 'upperBack', 'lats'], frontMuscle);
-    if (!sk.headBehind) s += head;
-    // Brazos
-    s += line(sk.shL, sk.elL, 'fx-limb', 11) + line(sk.elL, sk.haL, 'fx-limb', 10) + circle(sk.haL, 5.5, 'fx-hand') +
-      line(sk.shR, sk.elR, 'fx-limb', 11) + line(sk.elR, sk.haR, 'fx-limb', 10) + circle(sk.haR, 5.5, 'fx-hand');
-    s += overlays(sk, hl, ['frontDelt', 'sideDelt', 'rearDelt', 'biceps', 'triceps'], frontMuscle);
+    if (sk.torsoEllipse) body.push({ e: sk.torsoEllipse });
+    else body.push({ p: frontTorso(sk) }, { l: [add(m, [0, -2]), add(sk.head, [0, 6])], w: 11 });
+    body.push({ c: sk.head, r: L.HEAD });
+    let s = silhouette(body);
+    if (sk.knL) s += bones([[sk.hipL, sk.knL], [sk.knL, sk.anL], [sk.hipR, sk.knR], [sk.knR, sk.anR]]);
+    s += frontMuscles(sk, hl);
+    s += silhouette([
+      { l: [sk.shL, sk.elL], w: 13 }, { l: [sk.elL, sk.haL], w: 11 }, { c: sk.haL, r: 5.5 },
+      { l: [sk.shR, sk.elR], w: 13 }, { l: [sk.elR, sk.haR], w: 11 }, { c: sk.haR, r: 5.5 }
+    ], 'fx-arm');
+    s += bones([[sk.shL, sk.elL], [sk.elL, sk.haL], [sk.shR, sk.elR], [sk.elR, sk.haR]]);
+    s += frontArmMuscles(sk, hl);
     return s;
   }
 

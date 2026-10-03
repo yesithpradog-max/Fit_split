@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>FIT SPLIT · Entiende tu entrenamiento. Entrena con propósito.</title>
-  <meta name="description" content="FIT SPLIT es una plataforma educativa e interactiva de entrenamiento de fuerza: métodos como Push Pull Legs, Upper/Lower y Full Body, ejercicios animados con técnica paso a paso y un constructor de sesiones según tu objetivo.">
+  <meta name="description" content="FIT SPLIT es una plataforma educativa e interactiva de entrenamiento de fuerza: define tu objetivo, elige método y frecuencia, aprende cada ejercicio con animaciones que muestran los músculos y entrena guiado paso a paso.">
   <meta name="keywords" content="FIT SPLIT, fitsplit, push pull legs, rutina de gimnasio, hipertrofia, fuerza, ejercicios, técnica, RIR, tensión mecánica">
   <meta name="theme-color" content="#0b0d11">
   <meta name="color-scheme" content="dark">
@@ -41,6 +41,9 @@
 
   <header class="site-header">
     <div class="container header-inner">
+      <button type="button" class="back-btn" id="back-btn" aria-label="Volver atrás" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+      </button>
       <a class="brand" href="#/" aria-label="FIT SPLIT, ir al inicio">
         <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
           <rect x="7" y="6" width="5" height="20" rx="2" class="lm-push" transform="skewX(-12)"/>
@@ -49,21 +52,17 @@
         </svg>
         <span class="brand-name">FIT<span>SPLIT</span></span>
       </a>
-
-      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Abrir menú">
-        <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
-      </button>
-
-      <nav class="primary-nav" id="primary-nav" aria-label="Principal">
-        <ul>
-          <li><a href="#/" data-nav="inicio">Inicio</a></li>
-          <li><a href="#/metodos" data-nav="metodos">Métodos</a></li>
-          <li><a href="#/ejercicios" data-nav="ejercicios">Ejercicios</a></li>
-          <li><a href="#/aprende" data-nav="aprende">Aprende</a></li>
-          <li><a href="#/mi-entrenamiento" data-nav="mi-entrenamiento">Mi entrenamiento <span class="nav-badge mono" id="nav-badge" hidden>0</span></a></li>
-          <li><a href="#/sobre" data-nav="sobre">Sobre FIT SPLIT</a></li>
-        </ul>
-      </nav>
+      <div class="header-actions">
+        <a class="resume-btn" id="resume-btn" href="#/entrenar" hidden>
+          <span class="resume-dot" aria-hidden="true"></span>
+          <svg class="icon resume-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+          <span>Reanudar<span class="rl-long"> entrenamiento</span></span>
+        </a>
+        <a class="home-link" id="home-link" href="#/">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 11.5L12 4.5l8 7"/><path d="M6.5 10v9.5h11V10"/><path d="M10 19.5v-5h4v5"/></svg>
+          <span>Inicio</span>
+        </a>
+      </div>
     </div>
   </header>
 
@@ -79,23 +78,21 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container footer-grid">
-      <div class="footer-brand">
-        <p class="brand-name">FIT<span>SPLIT</span></p>
-        <p>Entiende tu entrenamiento. Entrena con propósito.</p>
-      </div>
-      <nav aria-label="Pie de página">
-        <ul class="footer-links">
-          <li><a href="#/metodos">Métodos</a></li>
-          <li><a href="#/ejercicios">Ejercicios</a></li>
-          <li><a href="#/aprende">Aprende</a></li>
-          <li><a href="#/mi-entrenamiento">Mi entrenamiento</a></li>
-          <li><a href="#/sobre">Sobre FIT SPLIT</a></li>
-        </ul>
-      </nav>
-      <p class="footer-note">Contenido educativo. No sustituye la valoración de un profesional sanitario o del ejercicio. © <span id="year">2026</span> FIT SPLIT.</p>
+    <div class="container footer-inner">
+      <p class="brand-name">FIT<span>SPLIT</span></p>
+      <p class="footer-note">Contenido educativo. No sustituye la valoración de un profesional sanitario, de la nutrición o del ejercicio. © <span id="year">2026</span> FIT SPLIT · <a href="#/sobre">Sobre el proyecto</a></p>
     </div>
   </footer>
+
+  <!-- Filtro de brillo para los músculos que trabaja cada ejercicio -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="fx-glow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="2.4" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
 
   <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
   <dialog class="dialog" id="dialog" aria-label="Diálogo"></dialog>

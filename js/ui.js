@@ -2,8 +2,8 @@
    FIT SPLIT · ui.js
    ---------------------------------------------------------------------
    Componentes de interfaz reutilizables. Cada función devuelve un
-   fragmento de HTML (string) o gestiona un elemento global (avisos,
-   diálogos). Las vistas (views.js) combinan estos componentes.
+   fragmento de HTML (string) o gestiona un elemento global: avisos,
+   diálogos y pestañas. Las vistas (views.js) combinan estos componentes.
    ===================================================================== */
 
 const UI = (() => {
@@ -56,7 +56,13 @@ const UI = (() => {
     eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
     sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
     code: '<path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5"/>',
-    shield: '<path d="M12 3.5l7 3v5.5c0 4.5-3 7.5-7 8.5-4-1-7-4-7-8.5V6.5z"/>'
+    shield: '<path d="M12 3.5l7 3v5.5c0 4.5-3 7.5-7 8.5-4-1-7-4-7-8.5V6.5z"/>',
+    home: '<path d="M4 11.5L12 4.5l8 7"/><path d="M6.5 10v9.5h11V10"/><path d="M10 19.5v-5h4v5"/>',
+    star: '<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8l-5.1 2.7 1-5.7-4.1-4 5.7-.8z" fill="currentColor" stroke-width="1.2"/>',
+    skip: '<path d="M6 5.5l9 6.5-9 6.5z" fill="currentColor"/><path d="M18 5.5v13"/>',
+    exit: '<path d="M14 4.5h5v15h-5"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+    trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6"/>',
+    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'
   };
 
   const icon = (name, cls = '') =>
@@ -67,14 +73,12 @@ const UI = (() => {
   const toneOfGroup = id => (MUSCLE_GROUPS[id] ? MUSCLE_GROUPS[id].tone : 'rest');
   const toneOfExercise = ex => toneOfGroup(ex.groups[0]);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const GOAL_ICONS = { fuerza: 'bolt', hipertrofia: 'growth', resistencia: 'repeat' };
 
-  /* Construye la parte "?m=..&v=.." de una ruta con contexto */
   function query(params) {
     const parts = Object.entries(params).filter(([, v]) => v != null && v !== '');
     return parts.length ? '?' + parts.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&') : '';
   }
-
-  const exerciseHref = (ex, ctx) => `#/ejercicio/${ex.id}` + (ctx ? query({ m: ctx.m, v: ctx.v, d: ctx.d, g: ctx.g }) : '');
 
   /* ---------------------------- Componentes ---------------------------- */
   function difficulty(level) {
@@ -90,84 +94,62 @@ const UI = (() => {
       <span style="width:${pct}%"></span></div>`;
   }
 
-  /* Tira de 7 días con el color de cada tipo de sesión */
-  function weekStrip(variant, { labels = true } = {}) {
+  function weekStrip(variant) {
     return `<div class="week-strip" aria-label="Distribución semanal">${DAYS.map(day => {
       const s = Planner.sessionFor(variant, day.id);
-      return `<span class="week-cell tone-${s.tone}" title="${day.name}: ${esc(s.name)}">
-        ${labels ? `<b>${day.short.charAt(0)}</b>` : ''}<i></i></span>`;
+      return `<span class="week-cell tone-${s.tone}" title="${day.name}: ${esc(s.name)}"><b>${day.short.charAt(0)}</b><i></i></span>`;
     }).join('')}</div>`;
   }
 
-  /* Tarjeta de ejercicio. ctx (opcional) habilita el botón de selección. */
+  /* Tarjeta de ejercicio.
+     groupId: grupo en el que se muestra (para el distintivo de recomendado)
+     selectable: muestra el botón Seleccionar */
   function exerciseCard(ex, opts = {}) {
-    const { ctx, selected = false, disabled = false, showAdd = false, index } = opts;
-    const href = exerciseHref(ex, ctx);
-    const tone = ctx ? toneOfGroup(ctx.g) : toneOfExercise(ex);
-    let action = '';
-    if (ctx) {
-      action = `<button type="button" class="btn btn-select${selected ? ' is-selected' : ''}" data-action="toggle-exercise"
-          data-ex="${ex.id}" data-focus="sel-${ex.id}" aria-pressed="${selected}" ${disabled ? 'disabled aria-describedby="limit-note"' : ''}>
-          ${selected ? icon('check') + '<span>Seleccionado</span>' : icon('plus') + '<span>Seleccionar</span>'}
-        </button>`;
-    } else if (showAdd) {
-      action = `<button type="button" class="btn btn-ghost btn-sm" data-action="open-add" data-ex="${ex.id}" data-focus="add-${ex.id}">
-          ${icon('plus')}<span>Añadir a una sesión</span></button>`;
-    }
+    const { groupId, selected = false, disabled = false, selectable = false, index } = opts;
+    const tone = groupId ? toneOfGroup(groupId) : toneOfExercise(ex);
+    const rec = groupId && Planner.isRecommended(ex.id, groupId);
     return `
-      <article class="ex-card tone-${tone}${selected ? ' is-selected' : ''}"${index != null ? ` style="--i:${index}"` : ''}>
-        <a class="ex-card-media" href="${href}" tabindex="-1" aria-hidden="true">${Animations.thumbnail(ex)}</a>
+      <article class="ex-card tone-${tone}${selected ? ' is-selected' : ''}${rec ? ' is-rec' : ''}"${index != null ? ` style="--i:${index}"` : ''}>
+        <button type="button" class="ex-card-media" data-action="open-exercise" data-ex="${ex.id}" tabindex="-1" aria-hidden="true">${Animations.thumbnail(ex)}</button>
+        ${rec ? `<span class="rec-badge">${icon('star')}Recomendado</span>` : ''}
         <div class="ex-card-body">
           <div class="ex-card-tags">
             <span class="tag">${ex.category === 'compuesto' ? 'Compuesto' : 'Aislamiento'}</span>
             ${difficulty(ex.difficulty)}
           </div>
-          <h3 class="ex-card-title"><a href="${href}">${esc(ex.name)}</a></h3>
+          <h3 class="ex-card-title">${esc(ex.name)}</h3>
           <p class="ex-card-meta">${esc(ex.primary.join(', '))}</p>
           <p class="ex-card-equip">${icon('dumbbell')}${esc(ex.equipmentLabel)}</p>
         </div>
         <div class="ex-card-actions">
-          <a class="btn btn-ghost btn-sm" href="${href}">${icon('eye')}<span>Ver ejercicio</span></a>
-          ${action}
+          <button type="button" class="btn btn-ghost btn-sm" data-action="open-exercise" data-ex="${ex.id}" data-focus="view-${ex.id}">${icon('eye')}<span>Ver</span></button>
+          ${selectable ? `<button type="button" class="btn btn-select btn-sm${selected ? ' is-selected' : ''}" data-action="toggle-exercise"
+            data-ex="${ex.id}" data-focus="sel-${ex.id}" aria-pressed="${selected}" ${disabled ? 'disabled' : ''}>
+            ${selected ? icon('check') + '<span>Elegido</span>' : icon('plus') + '<span>Elegir</span>'}</button>` : ''}
         </div>
       </article>`;
   }
 
-  /* Tarjeta de método para la portada y la lista de métodos */
-  function methodCard(m) {
-    const v = m.variants[0];
+  function topicCard(t, { featured = false } = {}) {
     return `
-      <a class="method-card tone-${m.tone}" href="#/metodos/${m.id}">
-        <div class="method-card-top">
-          <span class="method-abbr">${esc(m.short)}</span>
-          <span class="pill">${icon('calendar')}${esc(m.stats.days)}</span>
-        </div>
-        <h3>${esc(m.name)}</h3>
-        <p>${esc(m.summary)}</p>
-        ${weekStrip(v)}
-        <span class="card-link">Ver método ${icon('arrow-right')}</span>
-      </a>`;
-  }
-
-  function topicCard(t) {
-    return `
-      <a class="topic-card" href="#/aprende/${t.id}">
+      <a class="topic-card${featured ? ' is-featured' : ''}" href="#/aprende/${t.id}">
         <span class="topic-icon">${icon(t.icon)}</span>
-        <h3>${esc(t.shortTitle || t.title)}</h3>
-        <p>${esc(t.short)}</p>
-        <span class="topic-meta">${icon('clock')}${t.readTime} min de lectura</span>
+        <span class="topic-text">
+          <strong>${esc(t.shortTitle || t.title)}</strong>
+          <span>${esc(t.short)}</span>
+        </span>
+        ${icon('chevron-right', 'topic-arrow')}
       </a>`;
   }
 
-  /* Escala de repeticiones con los tres objetivos en carriles separados.
-     Muestra la superposición entre rangos en lugar de límites rígidos. */
+  /* Escala de repeticiones: tres carriles que muestran la superposición */
   function repScale(active) {
     const max = 30;
     const x = r => ((Math.min(r, max) - 1) / (max - 1)) * 100;
     const lanes = [
       { id: 'fuerza', solid: [1, 6], soft: [1, 8] },
       { id: 'hipertrofia', solid: [6, 15], soft: [5, 30] },
-      { id: 'resistencia', solid: [15, 30], soft: [12, 30], open: true }
+      { id: 'resistencia', solid: [15, 30], soft: [12, 30] }
     ];
     const ticks = [1, 5, 10, 15, 20, 25, 30];
     return `
@@ -178,27 +160,69 @@ const UI = (() => {
             <span class="rep-lane-name">${goalName(l.id)}</span>
             <div class="rep-track">
               <span class="rep-soft" style="left:${x(l.soft[0])}%;width:${x(l.soft[1]) - x(l.soft[0])}%"></span>
-              <span class="rep-solid${l.open ? ' is-open' : ''}" style="left:${x(l.solid[0])}%;width:${x(l.solid[1]) - x(l.solid[0])}%"></span>
+              <span class="rep-solid" style="left:${x(l.solid[0])}%;width:${x(l.solid[1]) - x(l.solid[0])}%"></span>
             </div>
           </div>`).join('')}
         <div class="rep-axis" aria-hidden="true">
           <span class="rep-lane-name">Reps</span>
           <div class="rep-ticks">${ticks.map(t => `<span style="left:${x(t)}%">${t === 30 ? '30+' : t}</span>`).join('')}</div>
         </div>
-        <p class="rep-legend"><span class="sw sw-solid"></span>Rango práctico habitual <span class="sw sw-soft"></span>Rango en el que también hay adaptación</p>
+        <p class="rep-legend"><span class="sw sw-solid"></span>Rango práctico habitual <span class="sw sw-soft"></span>También hay adaptación</p>
       </div>`;
-  }
-
-  function breadcrumb(items) {
-    return `<nav class="breadcrumb" aria-label="Ruta de navegación"><ol>${items.map((it, i) =>
-      i === items.length - 1
-        ? `<li aria-current="page">${esc(it.label)}</li>`
-        : `<li><a href="${it.href}">${esc(it.label)}</a>${icon('chevron-right')}</li>`).join('')}</ol></nav>`;
   }
 
   function emptyState({ iconName = 'info', title, text, actions = '' }) {
     return `<div class="empty-state">${icon(iconName)}<h3>${esc(title)}</h3><p>${esc(text)}</p>${actions ? `<div class="btn-row">${actions}</div>` : ''}</div>`;
   }
+
+  /* ------------------------------ Pestañas ------------------------------
+     Muestran el contenido por partes, sin páginas largas. Recuerdan la
+     pestaña elegida por cada grupo (id) mientras la página esté abierta. */
+  const tabMemory = {};
+
+  function tabs(id, items) {
+    const current = items.some(it => it.id === tabMemory[id]) ? tabMemory[id] : items[0].id;
+    return `<div class="tabs" data-tabs="${id}">
+      <div class="tab-list" role="tablist">${items.map(it => {
+        const sel = it.id === current;
+        return `<button type="button" role="tab" class="tab" id="${id}-t-${it.id}" aria-controls="${id}-p-${it.id}"
+          aria-selected="${sel}" tabindex="${sel ? 0 : -1}" data-tab="${it.id}">${it.icon ? icon(it.icon) : ''}<span>${esc(it.label)}</span></button>`;
+      }).join('')}</div>
+      ${items.map(it => `<div class="tab-panel" role="tabpanel" id="${id}-p-${it.id}" aria-labelledby="${id}-t-${it.id}"${it.id === current ? '' : ' hidden'}>${it.html}</div>`).join('')}
+    </div>`;
+  }
+
+  function selectTab(btn, focus = false) {
+    const box = btn.closest('[data-tabs]');
+    if (!box) return;
+    tabMemory[box.dataset.tabs] = btn.dataset.tab;
+    box.querySelectorAll(':scope > .tab-list > [role="tab"]').forEach(t => {
+      const sel = t === btn;
+      t.setAttribute('aria-selected', String(sel));
+      t.tabIndex = sel ? 0 : -1;
+      const panel = document.getElementById(t.getAttribute('aria-controls'));
+      if (panel) panel.hidden = !sel;
+    });
+    if (focus) btn.focus();
+    btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[role="tab"][data-tab]');
+    if (t) selectTab(t);
+  });
+  document.addEventListener('keydown', e => {
+    const t = e.target.closest && e.target.closest('[role="tab"][data-tab]');
+    if (!t || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return;
+    const list = [...t.parentElement.querySelectorAll('[role="tab"]')];
+    let i = list.indexOf(t);
+    if (e.key === 'ArrowRight') i = (i + 1) % list.length;
+    if (e.key === 'ArrowLeft') i = (i - 1 + list.length) % list.length;
+    if (e.key === 'Home') i = 0;
+    if (e.key === 'End') i = list.length - 1;
+    e.preventDefault();
+    selectTab(list[i], true);
+  });
 
   /* ------------------------------ Avisos ------------------------------ */
   function toast(message, type = 'info') {
@@ -212,25 +236,25 @@ const UI = (() => {
     setTimeout(() => {
       el.classList.remove('is-visible');
       setTimeout(() => el.remove(), 300);
-    }, 3200);
+    }, 3000);
   }
 
   /* ------------------------------ Diálogos ------------------------------ */
-  /* Abre el <dialog> global con contenido propio. Devuelve el elemento. */
-  function openDialog(html, { onClose } = {}) {
+  function openDialog(html, { onClose, wide = false, label = 'Diálogo' } = {}) {
     const dlg = document.getElementById('dialog');
+    dlg.classList.toggle('dialog-wide', wide);
+    dlg.setAttribute('aria-label', label);
     dlg.innerHTML = `<div class="dialog-inner">${html}</div>`;
     const close = () => dlg.close();
     dlg.querySelectorAll('[data-dialog-close]').forEach(b => b.addEventListener('click', close));
     dlg.onclose = () => { if (onClose) onClose(dlg.returnValue); };
     dlg.onclick = e => { if (e.target === dlg) close(); };
     dlg.showModal();
-    const first = dlg.querySelector('[autofocus], select, input, button:not([data-dialog-close])');
+    const first = dlg.querySelector('[autofocus], [data-dialog-close]');
     if (first) first.focus();
     return dlg;
   }
 
-  /* Confirmación accesible (sustituye a window.confirm) */
   function confirm({ title, text, confirmLabel = 'Confirmar', danger = false }) {
     return new Promise(resolve => {
       let answered = false;
@@ -241,6 +265,7 @@ const UI = (() => {
           <button type="button" class="btn btn-ghost" data-dialog-close>Cancelar</button>
           <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-confirm autofocus>${esc(confirmLabel)}</button>
         </div>`, { onClose: () => { if (!answered) resolve(false); } });
+      dlg.querySelector('[data-confirm]').focus();
       dlg.querySelector('[data-confirm]').addEventListener('click', () => {
         answered = true;
         resolve(true);
@@ -250,8 +275,8 @@ const UI = (() => {
   }
 
   return {
-    esc, icon, goalName, toneOfGroup, toneOfExercise, plural, query, exerciseHref,
-    difficulty, progress, weekStrip, exerciseCard, methodCard, topicCard, repScale,
-    breadcrumb, emptyState, toast, openDialog, confirm
+    esc, icon, goalName, toneOfGroup, toneOfExercise, plural, query, GOAL_ICONS,
+    difficulty, progress, weekStrip, exerciseCard, topicCard, repScale, emptyState,
+    tabs, selectTab, toast, openDialog, confirm
   };
 })();

@@ -12,6 +12,65 @@
 
 const LEARN_TOPICS = [
   {
+    id: 'alimentacion',
+    title: 'Alimentación',
+    icon: 'leaf',
+    short: 'El factor más determinante para ver resultados.',
+    readTime: 5,
+    lead: 'Entrenar genera el estímulo, pero sin una alimentación adecuada el cuerpo no tiene con qué adaptarse. Ninguna rutina, por buena que sea, produce resultados por sí sola.',
+    sections: [
+      {
+        h: 'Por qué es lo más importante',
+        p: [
+          'El entrenamiento es la señal; la alimentación aporta la energía y los materiales para construir y recuperar. Si comes muy por debajo de lo que gastas o con poca proteína, el progreso en fuerza y masa muscular se frena aunque entrenes bien.',
+          'Por eso insistimos: seguir una rutina no hace aparecer resultados de forma mágica. Los resultados vienen de combinar entrenamiento, alimentación, descanso y constancia durante semanas y meses.'
+        ]
+      },
+      {
+        h: 'Proteína',
+        p: [
+          'Es el nutriente clave para mantener y ganar masa muscular. La evidencia sugiere que alrededor de 1,6 g por kilogramo de peso corporal al día maximiza en promedio las ganancias en personas que entrenan, con un rango razonable de 1,6 a 2,2 g/kg.'
+        ],
+        list: [
+          'Repártela en 3–5 comidas a lo largo del día.',
+          'Fuentes: huevos, lácteos, carnes, pescado, legumbres, tofu.',
+          'Los suplementos de proteína son una opción práctica, no una obligación.'
+        ]
+      },
+      {
+        h: 'Energía según tu objetivo',
+        list: [
+          'Ganar músculo: un ligero superávit calórico facilita el progreso.',
+          'Perder grasa: un déficit moderado permite conservar el músculo si mantienes el entrenamiento y la proteína.',
+          'Fuerza y rendimiento: come lo suficiente para entrenar con energía y recuperarte entre sesiones.'
+        ]
+      },
+      {
+        h: 'Hábitos básicos',
+        list: [
+          'Prioriza alimentos poco procesados: verduras, frutas, cereales integrales y legumbres.',
+          'Mantente hidratado a lo largo del día.',
+          'Ningún suplemento sustituye una buena alimentación diaria.',
+          'Si tienes una condición médica o necesidades especiales, consulta a un profesional de la nutrición.'
+        ]
+      }
+    ],
+    keyPoints: [
+      'Sin una alimentación adecuada, la rutina por sí sola no da resultados.',
+      'Proteína: alrededor de 1,6 g/kg al día como referencia (1,6–2,2).',
+      'La energía total depende de tu objetivo.',
+      'Los resultados llegan con constancia: semanas y meses, no días.'
+    ],
+    myths: [
+      { myth: 'Si entreno duro, puedo comer cualquier cosa.', reality: 'El entrenamiento no compensa una alimentación insuficiente o desequilibrada.' },
+      { myth: 'Los suplementos son imprescindibles para ganar músculo.', reality: 'Pueden ser cómodos, pero lo esencial es la alimentación de cada día.' }
+    ],
+    refs: [
+      'Morton, R. W. et al. (2018). A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults. British Journal of Sports Medicine.',
+      'Jäger, R. et al. (2017). International Society of Sports Nutrition Position Stand: protein and exercise. Journal of the International Society of Sports Nutrition.'
+    ]
+  },
+  {
     id: 'hipertrofia',
     title: 'Hipertrofia',
     icon: 'growth',
@@ -416,7 +475,7 @@ const LEARN_TOPICS = [
 ];
 
 /* Temas que aparecen en la portada ("Aprende los fundamentos") */
-const FUNDAMENTALS = ['tension-mecanica', 'volumen', 'intensidad', 'rir', 'recuperacion', 'sobrecarga-progresiva'];
+const FUNDAMENTALS = ['alimentacion', 'tension-mecanica', 'volumen', 'rir', 'recuperacion', 'sobrecarga-progresiva'];
 
 /* Contenido de apoyo para los widgets interactivos */
 const INTENSITY_MEANINGS = [

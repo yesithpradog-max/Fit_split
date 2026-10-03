@@ -1667,3 +1667,18 @@ const DEFAULT_REPS = {
 
 /* Índice por id para búsquedas rápidas */
 const EXERCISE_INDEX = Object.fromEntries(EXERCISES.map(ex => [ex.id, ex]));
+
+/* Ejercicios recomendados por grupo muscular. Se destacan en la selección
+   para animar a elegir opciones eficaces y no solo las más cómodas. */
+const RECOMMENDED = {
+  pecho: { ids: ['press-banca', 'press-inclinado-mancuernas', 'fondos'], why: 'Permiten cargar de forma progresiva y trabajan el pecho en todo su recorrido, incluida la posición estirada.' },
+  espalda: { ids: ['dominadas', 'remo-barra', 'jalon-pecho'], why: 'Combinan un jalón vertical y un remo horizontal: cubren dorsales y espalda media.' },
+  hombros: { ids: ['press-militar', 'elevaciones-laterales'], why: 'Un empuje vertical pesado más un aislamiento del deltoides lateral, que el press trabaja poco.' },
+  'deltoides-posteriores': { ids: ['face-pull', 'pajaro-maquina'], why: 'Mantienen la tensión en todo el recorrido y equilibran el trabajo de empuje.' },
+  biceps: { ids: ['curl-inclinado', 'curl-barra'], why: 'El curl inclinado estira más el bíceps; el curl con barra permite progresar en carga.' },
+  triceps: { ids: ['extension-sobre-cabeza', 'press-cerrado'], why: 'La extensión sobre la cabeza estira la cabeza larga; el press cerrado permite cargas altas.' },
+  cuadriceps: { ids: ['sentadilla', 'sentadilla-hack', 'prensa'], why: 'Ejercicios compuestos con gran flexión de rodilla, donde el cuádriceps recibe más demanda.' },
+  isquiotibiales: { ids: ['peso-muerto-rumano', 'curl-femoral-sentado'], why: 'Una bisagra de cadera y una flexión de rodilla: trabajan las dos funciones del músculo en posición estirada.' },
+  gluteos: { ids: ['hip-thrust', 'sentadilla'], why: 'El hip thrust carga el glúteo en extensión y la sentadilla en posición estirada: se complementan.' },
+  pantorrillas: { ids: ['elevacion-talones-pie', 'elevacion-talones-sentado'], why: 'De pie trabaja más el gemelo y sentado el sóleo: juntos cubren toda la pantorrilla.' }
+};
