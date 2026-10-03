@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FIT SPLIT · Entiende tu entrenamiento. Entrena con propósito.</title>
+  <meta name="description" content="FIT SPLIT es una plataforma educativa e interactiva de entrenamiento de fuerza: métodos como Push Pull Legs, Upper/Lower y Full Body, ejercicios animados con técnica paso a paso y un constructor de sesiones según tu objetivo.">
+  <meta name="keywords" content="FIT SPLIT, fitsplit, push pull legs, rutina de gimnasio, hipertrofia, fuerza, ejercicios, técnica, RIR, tensión mecánica">
+  <meta name="theme-color" content="#0b0d11">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Vista previa al compartir el enlace -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FIT SPLIT">
+  <meta property="og:title" content="FIT SPLIT · Entiende tu entrenamiento. Entrena con propósito.">
+  <meta property="og:description" content="Explora métodos de entrenamiento, aprende cómo ejecutar cada ejercicio con animaciones y construye sesiones adaptadas a tus objetivos.">
+  <meta property="og:image" content="assets/images/og-image.png">
+  <meta property="og:locale" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "FIT SPLIT",
+    "alternateName": "FitSplit",
+    "description": "Plataforma educativa e interactiva sobre métodos de entrenamiento de fuerza, técnica de ejercicios y construcción de sesiones.",
+    "inLanguage": "es"
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main" onclick="document.getElementById('main').focus(); return false;">Saltar al contenido</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#/" aria-label="FIT SPLIT, ir al inicio">
+        <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect x="7" y="6" width="5" height="20" rx="2" class="lm-push" transform="skewX(-12)"/>
+          <rect x="15.5" y="6" width="5" height="20" rx="2" class="lm-pull" transform="skewX(-12)"/>
+          <rect x="24" y="6" width="5" height="20" rx="2" class="lm-legs" transform="skewX(-12)"/>
+        </svg>
+        <span class="brand-name">FIT<span>SPLIT</span></span>
+      </a>
+
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Abrir menú">
+        <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+
+      <nav class="primary-nav" id="primary-nav" aria-label="Principal">
+        <ul>
+          <li><a href="#/" data-nav="inicio">Inicio</a></li>
+          <li><a href="#/metodos" data-nav="metodos">Métodos</a></li>
+          <li><a href="#/ejercicios" data-nav="ejercicios">Ejercicios</a></li>
+          <li><a href="#/aprende" data-nav="aprende">Aprende</a></li>
+          <li><a href="#/mi-entrenamiento" data-nav="mi-entrenamiento">Mi entrenamiento <span class="nav-badge mono" id="nav-badge" hidden>0</span></a></li>
+          <li><a href="#/sobre" data-nav="sobre">Sobre FIT SPLIT</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div id="app" class="view" aria-live="off">
+      <noscript>
+        <div class="container noscript">
+          <h1>FIT SPLIT necesita JavaScript</h1>
+          <p>Activa JavaScript en tu navegador para explorar los métodos, las animaciones y el constructor de entrenamiento.</p>
+        </div>
+      </noscript>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <p class="brand-name">FIT<span>SPLIT</span></p>
+        <p>Entiende tu entrenamiento. Entrena con propósito.</p>
+      </div>
+      <nav aria-label="Pie de página">
+        <ul class="footer-links">
+          <li><a href="#/metodos">Métodos</a></li>
+          <li><a href="#/ejercicios">Ejercicios</a></li>
+          <li><a href="#/aprende">Aprende</a></li>
+          <li><a href="#/mi-entrenamiento">Mi entrenamiento</a></li>
+          <li><a href="#/sobre">Sobre FIT SPLIT</a></li>
+        </ul>
+      </nav>
+      <p class="footer-note">Contenido educativo. No sustituye la valoración de un profesional sanitario o del ejercicio. © <span id="year">2026</span> FIT SPLIT.</p>
+    </div>
+  </footer>
+
+  <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+  <dialog class="dialog" id="dialog" aria-label="Diálogo"></dialog>
+
+  <!-- Datos -->
+  <script src="js/data.js" defer></script>
+  <script src="js/exercises.js" defer></script>
+  <script src="js/learn.js" defer></script>
+  <!-- Lógica y animaciones -->
+  <script src="js/workouts.js" defer></script>
+  <script src="js/animations.js" defer></script>
+  <!-- Interfaz -->
+  <script src="js/ui.js" defer></script>
+  <script src="js/views.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
