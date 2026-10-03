@@ -242,16 +242,29 @@ const Animations = (() => {
     },
 
     /* Remo con barra (bisagra de cadera) */
-    'row-barbell'() {
+    'row-barbell'(o) {
       const hip = [166, 168], sh = pt(hip, -35, L.T);
       const A = [233, 206], B = [197, 166];
-      const legs = leg(hip, [205, 264], -1);
+      const support = !!o.support;
+      const legs = leg(hip, support ? [180, 264] : [205, 264], -1);
+      let scene = SC.floor();
+      if (support) {
+        const F = frame(hip, sh);
+        const base = add(hip, mul(F.front, 28));
+        const p0 = add(base, mul(F.u, -L.T * 0.1)), p1 = add(base, mul(F.u, L.T * 0.78));
+        scene += line(p0, p1, 'fx-pad', 12) + line(lerpP(p0, p1, 0.35), [214, FLOOR], 'fx-frame', 6) + line([150, FLOOR - 2], [244, FLOOR - 2], 'fx-frame', 5);
+      }
       return {
-        scene: SC.floor(), first: 'con',
-        labels: { con: 'Tirón', turn: 'Contracción', ecc: 'Descenso controlado' },
+        scene, first: 'con',
+        labels: support
+          ? { con: 'Tirón con el pecho apoyado', turn: 'Contracción', ecc: 'Descenso controlado' }
+          : { con: 'Tirón', turn: 'Contracción', ecc: 'Descenso controlado' },
         build(t) {
           const { el, ha } = arm(sh, lerpP(A, B, t), 1);
-          return { sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: [227, 270], tilt: -8 }, front: EQ.plate(ha, 21) };
+          return {
+            sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: add(legs.an, [22, 6]), tilt: -8 },
+            front: support ? EQ.dbEnd(ha, 10) : EQ.plate(ha, 21)
+          };
         }
       };
     },
@@ -279,7 +292,26 @@ const Animations = (() => {
     },
 
     /* Remo sentado en máquina con apoyo de pecho */
-    'row-seated'() {
+    'row-seated'(o) {
+      if (o.cable) {
+        const hip = [168, 205], pulley = [338, 168];
+        const legs = leg(hip, [244, 248], -1);
+        const scene = SC.floor() + SC.seat(124, 204, 214) + line([252, 226], [258, FLOOR], 'fx-frame', 7) +
+          SC.post(352, 120) + SC.stack(358, 150, 30);
+        return {
+          scene, first: 'con',
+          labels: { con: 'Tirón hacia el abdomen', turn: 'Contracción', ecc: 'Regreso al estiramiento' },
+          build(t) {
+            const sh = pt(hip, lerp(-72, -92, t), L.T);
+            const { el, ha } = arm(sh, lerpP([262, 176], [194, 168], t), 1);
+            return {
+              sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: pt(legs.an, -70, 20) },
+              back: EQ.cable(pulley, ha),
+              front: EQ.handle(ha)
+            };
+          }
+        };
+      }
       const hip = [170, 205], sh = pt(hip, -90, L.T);
       const A = [256, 132], B = [186, 160], pivot = [292, 64];
       const legs = leg(hip, [240, 262], -1);
@@ -341,6 +373,9 @@ const Animations = (() => {
 
     /* Curl de bíceps: barra, mancuerna, martillo, polea o inclinado */
     curl(o) {
+      if (o.preacher) return curlPreacher(o);
+      if (o.bayesian) return curlBayesian();
+      if (o.concentration) return curlConcentration();
       const inc = !!o.incline;
       const hip = inc ? [212, 205] : [198, 151];
       const sh = pt(hip, inc ? -128 : -90, L.T);
@@ -403,7 +438,25 @@ const Animations = (() => {
     },
 
     /* Extensión de tríceps por encima de la cabeza */
-    'overhead-ext'() {
+    'overhead-ext'(o) {
+      if (o.cable) {
+        const hip = [196, 156], sh = pt(hip, -66, L.T), pulley = [40, 176];
+        const front = leg(hip, [250, 264], -1), backLeg = leg(hip, [146, 264], -1);
+        const el = pt(sh, -38, L.UA);
+        return {
+          scene: SC.floor() + SC.post(26, 40) + SC.stack(6, 196, 26), first: 'ecc', viewBox: VB.wide,
+          labels: { start: 'Brazos extendidos al frente', ecc: 'Flexión tras la cabeza', turn: 'Estiramiento', con: 'Extensión' },
+          build(t) {
+            const fa = lerp(-34, -188, t);
+            const ha = pt(el, fa, L.FA);
+            return {
+              sk: { hip, sh, el, ha, kn: front.kn, an: front.an, to: [272, 270], kn2: backLeg.kn, an2: backLeg.an, to2: [166, 270] },
+              back: EQ.cable(pulley, ha),
+              front: EQ.grip(ha)
+            };
+          }
+        };
+      }
       const hip = [190, 200], sh = pt(hip, -90, L.T);
       const el = pt(sh, -96, L.UA);
       const legs = leg(hip, [250, 264], -1);
@@ -429,6 +482,8 @@ const Animations = (() => {
       const B = seated ? [192, 38] : [204, -12];
       let scene = SC.floor();
       if (seated) scene += SC.seat(150, 214, 214) + SC.backPad(hip, sh, 0, 1.05, 15);
+      const pivot = [128, -12];
+      if (o.machine) scene += SC.post(128, -12) + circle(pivot, 5, 'fx-pivot');
       return {
         scene, first: 'con', viewBox: seated ? VB.wide : VB.tall,
         labels: o.arnold
@@ -443,26 +498,38 @@ const Animations = (() => {
             const target = add(lerpP(A, B, t), [(seated ? 4 : 7) * Math.sin(Math.PI * t), 0]);
             ({ el, ha } = arm(sh, target, 1));
           }
-          const front = o.equip === 'barbell' ? EQ.plate(ha, 22) : EQ.dbEnd(ha, 10);
+          const front = o.machine ? EQ.handle(ha, 90, 16) : o.equip === 'barbell' ? EQ.plate(ha, 22) : EQ.dbEnd(ha, 10);
+          const back = o.machine ? line(pivot, ha, 'fx-lever', 6) : '';
           const tilt = seated ? 0 : -14 * Math.sin(Math.PI * Math.min(1, t * 1.6));
-          return { sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: add(ankle, [22, 6]), tilt }, front };
+          return { sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: add(ankle, [22, 6]), tilt }, back, front };
         }
       };
     },
 
     /* Sentadilla con barra */
-    squat() {
+    squat(o) {
       const ankle = [205, 264];
+      const upright = o.front || o.goblet;
       return {
         scene: SC.floor(), first: 'ecc',
         labels: { ecc: 'Descenso', turn: 'Posición inferior', con: 'Subida' },
         build(t) {
-          const hip = lerpP([199, 151], [156, 212], t);
-          const sh = pt(hip, lerp(-88, -52, t), L.T);
+          const hip = lerpP([199, 151], upright ? [162, 214] : [156, 212], t);
+          const sh = pt(hip, lerp(-88, upright ? -66 : -52, t), L.T);
           const F = frame(hip, sh);
+          const { kn, an } = leg(hip, ankle, -1);
+          if (o.front) {
+            const bar = add(add(sh, mul(F.front, 12)), mul(F.u, -2));
+            const el = pt(sh, F.a + 98, L.UA);
+            return { sk: { hip, sh, el, ha: add(bar, mul(F.u, -3)), kn, an, to: [227, 270] }, front: EQ.plate(bar, 24) };
+          }
+          if (o.goblet) {
+            const db = add(add(sh, mul(F.front, 17)), mul(F.u, -16));
+            const { el, ha } = arm(sh, db, 1);
+            return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: EQ.dbSide(db, F.a, 26) };
+          }
           const bar = add(add(sh, mul(F.back, 11)), mul(F.u, -4));
           const { el, ha } = arm(sh, add(bar, mul(F.front, 4)), -1);
-          const { kn, an } = leg(hip, ankle, -1);
           return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: EQ.plate(bar, 24) };
         }
       };
@@ -540,7 +607,23 @@ const Animations = (() => {
     },
 
     /* Zancadas con mancuernas */
-    lunge() {
+    lunge(o) {
+      if (o.bulgarian) {
+        return {
+          scene: SC.floor() + SC.bench(64, 150, 224), first: 'ecc',
+          labels: { ecc: 'Descenso', turn: 'Posición inferior', con: 'Subida' },
+          build(t) {
+            const hip = lerpP([200, 158], [192, 206], t);
+            const sh = pt(hip, lerp(-84, -70, t), L.T);
+            const fr = leg(hip, [248, 264], -1), bk = leg(hip, [134, 212], -1);
+            const { el, ha } = arm(sh, pt(sh, 94, 84), 1);
+            return {
+              sk: { hip, sh, el, ha, kn: fr.kn, an: fr.an, to: [270, 270], kn2: bk.kn, an2: bk.an, to2: [114, 219] },
+              front: EQ.dbEnd(ha, 10)
+            };
+          }
+        };
+      }
       return {
         scene: SC.floor(), first: 'ecc',
         labels: { ecc: 'Descenso', turn: 'Rodilla cerca del suelo', con: 'Subida' },
@@ -576,7 +659,7 @@ const Animations = (() => {
             return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: EQ.plate(bar, 22) };
           }
           const { el, ha } = arm(sh, lerpP([208, 156], [226, 224], t), 1);
-          return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: EQ.plate(ha, 21) };
+          return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: o.equip === 'dumbbell' ? EQ.dbEnd(ha, 10) : EQ.plate(ha, 21) };
         }
       };
     },
@@ -629,7 +712,20 @@ const Animations = (() => {
     },
 
     /* Hip thrust */
-    'hip-thrust'() {
+    'hip-thrust'(o) {
+      if (o.floor) {
+        const sh = [124, 256], ankle = [256, 262];
+        return {
+          scene: SC.floor(), first: 'con',
+          labels: { con: 'Elevación de cadera', turn: 'Extensión completa', ecc: 'Descenso controlado' },
+          build(t) {
+            const hip = pt(sh, lerp(0, -30, t), L.T);
+            const { kn, an } = leg(hip, ankle, -1);
+            const { el, ha } = arm(sh, [200, 264], 1);
+            return { sk: { hip, sh, el, ha, kn, an, to: [278, 268], tilt: lerp(0, 18, t) } };
+          }
+        };
+      }
       const sh = [146, 206], ankle = [284, 264];
       return {
         scene: SC.floor() + SC.bench(56, 152, 214), first: 'con',
@@ -668,9 +764,11 @@ const Animations = (() => {
     },
 
     /* Elevación de talones de pie (escalón con mancuerna) */
-    'calf-standing'() {
+    'calf-standing'(o) {
       const toe = [228, 250];
-      const scene = SC.floor() + rect(212, 252, 52, 20, 'fx-block', 2) + SC.post(292, 70, FLOOR, 7);
+      const machine = !!o.machine;
+      const scene = SC.floor() + rect(212, 252, 52, 20, 'fx-block', 2) +
+        (machine ? SC.post(300, -10, FLOOR, 8) + SC.stack(312, 120, 30) : SC.post(292, 70, FLOOR, 7));
       return {
         scene, first: 'ecc', viewBox: VB.wide,
         labels: { start: 'Talones arriba', ecc: 'Descenso del talón', turn: 'Estiramiento', con: 'Elevación' },
@@ -678,10 +776,21 @@ const Animations = (() => {
           const an = pt(toe, lerp(222, 168, t), 22);
           const kn = [an[0] + 3, an[1] - 56], hip = [kn[0] - 3, kn[1] - 58];
           const sh = pt(hip, -90, L.T);
+          const far = o.single ? { kn2: pt(hip, 98, L.TH) } : {};
+          if (far.kn2) { far.an2 = pt(far.kn2, 166, L.SH); far.to2 = pt(far.an2, 100, 16); }
+          if (machine) {
+            const pad = add(sh, [3, -9]);
+            const grip = arm(sh, [sh[0] + 22, sh[1] - 14], 1);
+            return {
+              sk: { hip, sh, el: grip.el, ha: grip.ha, kn, an, to: toe, ...far },
+              back: line(pad, [300, pad[1]], 'fx-lever', 7),
+              front: EQ.pad(pad, 8)
+            };
+          }
           const { el, ha } = arm(sh, pt(sh, 92, 84), 1);
           const support = arm(sh, [286, sh[1] + 40], 1);
           return {
-            sk: { hip, sh, el, ha, kn, an, to: toe, el2: support.el, ha2: support.ha },
+            sk: { hip, sh, el, ha, kn, an, to: toe, el2: support.el, ha2: support.ha, ...far },
             front: EQ.dbEnd(ha, 10)
           };
         }
@@ -733,7 +842,26 @@ const Animations = (() => {
     /* ------------------------- Vistas frontales ------------------------- */
 
     /* Elevaciones laterales (vista frontal) */
-    'lateral-raise'() {
+    'lateral-raise'(o) {
+      if (o.cable) {
+        const pulley = [96, 258];
+        const scene = SC.floor() + SC.post(82, 150) + rect(64, 232, 26, 40, 'fx-stack', 3);
+        return {
+          view: 'front', scene, first: 'con',
+          labels: { con: 'Elevación lateral', turn: 'Altura de hombros', ecc: 'Descenso controlado' },
+          build(t) {
+            const b = frontBody();
+            const target = pt(b.shR, lerp(100, 6, t), lerp(70, 82, t));
+            const elR = ik(b.shR, target, L.UA, L.FA, -1), haR = pt(elR, ang(elR, target), L.FA);
+            const hang = pt(b.shR, 88, 82);
+            const elH = ik(b.shR, hang, L.UA, L.FA, -1), haH = pt(elH, ang(elH, hang), L.FA);
+            return {
+              sk: { ...b, elR, haR, elL: mx(elH), haL: mx(haH) },
+              front: EQ.cable(pulley, haR) + EQ.grip(haR)
+            };
+          }
+        };
+      }
       return {
         view: 'front', scene: SC.floor(), first: 'con',
         labels: { con: 'Elevación lateral', turn: 'Altura de hombros', ecc: 'Descenso controlado' },
@@ -750,9 +878,12 @@ const Animations = (() => {
     },
 
     /* Elevaciones posteriores con torso inclinado (vista posterior) */
-    'rear-raise'() {
+    'rear-raise'(o) {
+      const scene = SC.floor() + (o.bench
+        ? rect(182, 112, 36, 62, 'fx-frame-fill', 4) + SC.post(200, 174, FLOOR, 8) + line([170, FLOOR - 2], [230, FLOOR - 2], 'fx-frame', 5)
+        : '');
       return {
-        view: 'rear', scene: SC.floor(), first: 'con',
+        view: 'rear', scene, first: 'con',
         labels: { con: 'Apertura hacia fuera', turn: 'Brazos en línea con el torso', ecc: 'Descenso controlado' },
         build(t) {
           const b = {
@@ -771,18 +902,23 @@ const Animations = (() => {
     },
 
     /* Pájaro en máquina (vista posterior, sentado) */
-    'reverse-fly'() {
-      const scene = SC.floor() + rect(190, 16, 20, 236, 'fx-frame-fill', 3) +
-        rect(160, 172, 80, 11, 'fx-pad', 4) + SC.post(200, 183, FLOOR, 8);
+    'reverse-fly'(o) {
+      const cable = !!o.cable;
+      const pR = [372, 84], pL = mx(pR);
+      const scene = cable
+        ? SC.floor() + SC.post(386, 4) + SC.post(14, 4)
+        : SC.floor() + rect(190, 16, 20, 236, 'fx-frame-fill', 3) + rect(160, 172, 80, 11, 'fx-pad', 4) + SC.post(200, 183, FLOOR, 8);
       return {
         view: 'rear', scene, first: 'con',
         labels: { con: 'Apertura hacia atrás', turn: 'Brazos en línea con el torso', ecc: 'Regreso controlado' },
         build(t) {
-          const b = { head: [200, 52], shL: [173, 82], shR: [227, 82], hipL: [186, 168], hipR: [214, 168] };
+          const b = cable ? frontBody() : { head: [200, 52], shL: [173, 82], shR: [227, 82], hipL: [186, 168], hipR: [214, 168] };
           const elR = lerpP([238, 96], [274, 86], t), haR = lerpP([214, 92], [314, 90], t);
+          const haL = mx(haR);
           return {
-            sk: { ...b, elR, haR, elL: mx(elR), haL: mx(haR) },
-            front: EQ.handle(haR) + EQ.handle(mx(haR))
+            sk: { ...b, elR, haR, elL: mx(elR), haL },
+            back: cable ? EQ.cable(pL, haR) + EQ.cable(pR, haL) : '',
+            front: cable ? EQ.grip(haR) + EQ.grip(haL) : EQ.handle(haR) + EQ.handle(haL)
           };
         }
       };
@@ -807,16 +943,19 @@ const Animations = (() => {
       };
     },
 
-    /* Cruce de poleas (vista frontal) */
-    crossover() {
-      const pR = [372, 16], pL = mx(pR);
+    /* Cruce de poleas (vista frontal). low: poleas bajas, de abajo hacia arriba */
+    crossover(o) {
+      const low = !!o.low;
+      const pR = low ? [372, 256] : [372, 16], pL = mx(pR);
       const scene = SC.floor() + SC.post(386, 4) + SC.post(14, 4);
       return {
         view: 'front', scene, first: 'con',
-        labels: { con: 'Cierre del arco', turn: 'Contracción', ecc: 'Apertura controlada' },
+        labels: low
+          ? { con: 'Arco hacia arriba', turn: 'Manos a la altura del pecho alto', ecc: 'Descenso controlado' }
+          : { con: 'Cierre del arco', turn: 'Contracción', ecc: 'Apertura controlada' },
         build(t) {
           const b = frontBody();
-          const target = pt(b.shR, lerp(6, 104, t), 82);
+          const target = low ? pt(b.shR, lerp(42, 128, t), lerp(82, 42, t)) : pt(b.shR, lerp(6, 104, t), 82);
           const elR = ik(b.shR, target, L.UA, L.FA, -1), haR = pt(elR, ang(elR, target), L.FA);
           const haL = mx(haR);
           return {
@@ -828,6 +967,213 @@ const Animations = (() => {
       };
     }
   };
+
+
+  /* ---------------------- Patrones añadidos (v3) ---------------------- */
+  Object.assign(PRESETS, {
+    /* Flexiones: cuerpo rígido que pivota sobre los pies */
+    pushup() {
+      const an = [60, 258], hand = [232, 262];
+      return {
+        scene: SC.floor(), first: 'ecc',
+        labels: { start: 'Brazos extendidos', ecc: 'Descenso', turn: 'Pecho cerca del suelo', con: 'Empuje' },
+        build(t) {
+          const a = lerp(-25, -7.7, t);
+          const kn = pt(an, a, L.SH), hip = pt(an, a, L.SH + L.TH), sh = pt(an, a, L.SH + L.TH + L.T);
+          const { el } = arm(sh, hand, 1);
+          return { sk: { hip, sh, el, ha: hand, kn, an, to: [52, 270], tilt: -6 } };
+        }
+      };
+    },
+
+    /* Peso muerto convencional desde el suelo */
+    deadlift() {
+      const ankle = [205, 264];
+      return {
+        scene: SC.floor(), first: 'con',
+        labels: { start: 'Barra en el suelo', con: 'Levantamiento', turn: 'Bloqueo de cadera', ecc: 'Descenso controlado' },
+        build(t) {
+          const hip = lerpP([162, 195], [199, 152], t);
+          const sh = pt(hip, lerp(-26, -88, t), L.T);
+          const { kn, an } = leg(hip, ankle, -1);
+          const { el, ha } = arm(sh, lerpP([214, 247], [208, 156], t), 1);
+          return { sk: { hip, sh, el, ha, kn, an, to: [227, 270] }, front: EQ.plate(ha, 24) };
+        }
+      };
+    },
+
+    /* Elevaciones frontales con mancuerna */
+    'front-raise'() {
+      const hip = [198, 151], sh = pt(hip, -90, L.T);
+      const legs = leg(hip, [200, 264], -1);
+      return {
+        scene: SC.floor(), first: 'con',
+        labels: { con: 'Elevación al frente', turn: 'Altura de hombros', ecc: 'Descenso controlado' },
+        build(t) {
+          const a = lerp(86, -4, t);
+          const el = pt(sh, a, L.UA), ha = pt(el, a - 4, L.FA);
+          return { sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: [222, 270] }, front: EQ.dbEnd(ha, 10) };
+        }
+      };
+    },
+
+    /* Patada de tríceps con mancuerna, apoyado en banco */
+    'tri-kickback'() {
+      const hip = [150, 170], sh = pt(hip, -12, L.T);
+      const legs = leg(hip, [186, 264], -1);
+      const support = arm(sh, [240, 228], 1);
+      const el = pt(sh, 170, L.UA);
+      return {
+        scene: SC.floor() + SC.bench(84, 262, 232), first: 'con',
+        labels: { start: 'Codo a 90°', con: 'Extensión hacia atrás', turn: 'Brazo extendido', ecc: 'Regreso controlado' },
+        build(t) {
+          const ha = pt(el, lerp(92, 168, t), L.FA);
+          return {
+            sk: {
+              hip, sh, el, ha, kn: legs.kn, an: legs.an, to: [208, 270], tilt: -6,
+              el2: support.el, ha2: support.ha, kn2: [156, 224], an2: [104, 226], to2: [90, 236]
+            },
+            front: EQ.dbEnd(ha, 9)
+          };
+        }
+      };
+    },
+
+    /* Curl nórdico: de rodillas, el cuerpo cae rígido hacia delante */
+    nordic() {
+      const kn = [200, 256], an = [146, 262];
+      const scene = SC.floor() + rect(176, 264, 52, 8, 'fx-pad', 3) + circle([142, 251], 7, 'fx-pad-dyn') +
+        line([136, 251], [124, FLOOR], 'fx-frame', 6);
+      return {
+        scene, first: 'ecc',
+        labels: { start: 'De rodillas, cuerpo recto', ecc: 'Caída controlada', turn: 'Punto más bajo controlable', con: 'Regreso con los isquios' },
+        build(t) {
+          const a = lerp(-86, -26, t);
+          const hip = pt(kn, a, L.TH), sh = pt(hip, a, L.T);
+          const F = frame(hip, sh);
+          const { el, ha } = arm(sh, add(add(sh, mul(F.front, 30)), mul(F.u, -30)), 1);
+          return { sk: { hip, sh, el, ha, kn, an, to: [126, 268] } };
+        }
+      };
+    },
+
+    /* Abducción de cadera en máquina (vista frontal, sentado) */
+    'hip-abduction'() {
+      const scene = SC.floor() + rect(174, 70, 52, 128, 'fx-frame-fill', 4) + rect(146, 200, 108, 11, 'fx-pad', 4) +
+        SC.post(200, 211, FLOOR, 8) + line([160, FLOOR - 2], [240, FLOOR - 2], 'fx-frame', 5);
+      return {
+        view: 'front', scene, first: 'con',
+        labels: { con: 'Apertura de piernas', turn: 'Máxima apertura', ecc: 'Regreso controlado' },
+        build(t) {
+          const b = {
+            head: [200, 92], shL: [173, 122], shR: [227, 122], hipL: [186, 194], hipR: [214, 194],
+            elR: [236, 160], haR: [240, 194]
+          };
+          const knR = lerpP([222, 224], [252, 220], t), anR = add(knR, [2, 40]);
+          const sk = { ...b, elL: mx(b.elR), haL: mx(b.haR), knR, anR, knL: mx(knR), anL: mx(anR) };
+          return { sk, front: EQ.pad(add(knR, [13, -4]), 7) + EQ.pad(add(mx(knR), [-13, -4]), 7) };
+        }
+      };
+    },
+
+    /* Hiperextensión a 45° */
+    'back-extension'() {
+      const an = [100, 240];
+      const kn = pt(an, -40, L.SH), hip = pt(an, -40, L.SH + L.TH);
+      const fr = unit(50);
+      const pad = add(pt(an, -40, 100), mul(fr, 12));
+      const scene = SC.floor() + line(add(pad, mul(unit(-40), -16)), add(pad, mul(unit(-40), 16)), 'fx-pad', 12) +
+        line(pad, [pad[0] - 30, FLOOR], 'fx-frame', 6) + line(add(an, [6, 12]), [96, FLOOR], 'fx-frame', 6) +
+        line(add(an, [-8, 14]), add(an, [18, -6]), 'fx-frame', 6) + line([60, FLOOR - 2], [190, FLOOR - 2], 'fx-frame', 5);
+      return {
+        scene, first: 'con',
+        labels: { start: 'Torso abajo', con: 'Extensión de cadera', turn: 'Cuerpo en línea', ecc: 'Descenso controlado' },
+        build(t) {
+          const sh = pt(hip, lerp(58, -40, t), L.T);
+          const F = frame(hip, sh);
+          const { el, ha } = arm(sh, add(add(sh, mul(F.front, 14)), mul(F.u, -22)), 1);
+          return { sk: { hip, sh, el, ha, kn, an, to: pt(an, 50, 18) } };
+        }
+      };
+    },
+
+    /* Contractor de pecho (pec deck), vista frontal sentado */
+    'pec-deck'() {
+      const scene = SC.floor() + rect(176, 30, 48, 146, 'fx-frame-fill', 4) +
+        rect(160, 172, 80, 11, 'fx-pad', 4) + SC.post(200, 183, FLOOR, 8) + line([170, FLOOR - 2], [230, FLOOR - 2], 'fx-frame', 5);
+      const pR = [244, 22];
+      return {
+        view: 'front', scene, first: 'con',
+        labels: { con: 'Cierre de los brazos', turn: 'Contracción', ecc: 'Apertura controlada' },
+        build(t) {
+          const b = { head: [200, 52], shL: [173, 82], shR: [227, 82], hipL: [186, 168], hipR: [214, 168] };
+          const elR = lerpP([270, 98], [234, 104], t), haR = lerpP([302, 84], [211, 92], t);
+          const haL = mx(haR);
+          return {
+            sk: { ...b, elR, haR, elL: mx(elR), haL },
+            back: line(pR, haR, 'fx-lever', 6) + line(mx(pR), haL, 'fx-lever', 6),
+            front: EQ.handle(haR) + EQ.handle(haL)
+          };
+        }
+      };
+    }
+  });
+
+  /* Curl en banco Scott (predicador) */
+  function curlPreacher(o) {
+    const hip = [176, 205], sh = pt(hip, -92, L.T);
+    const legs = leg(hip, [244, 264], -1);
+    const el = pt(sh, 42, L.UA);
+    const below = mul(unit(132), 13);
+    const p0 = add(pt(sh, 42, 18), below), p1 = add(pt(sh, 42, 60), below);
+    const scene = SC.floor() + SC.seat(140, 212, 214) + line(p0, p1, 'fx-pad', 11) + line(lerpP(p0, p1, 0.5), [222, FLOOR], 'fx-frame', 6);
+    return {
+      scene, first: 'con',
+      labels: { start: 'Brazo apoyado y estirado', con: 'Flexión del codo', turn: 'Contracción', ecc: 'Descenso controlado' },
+      build(t) {
+        const fa = lerp(56, -70, t);
+        const ha = pt(el, fa, L.FA);
+        return {
+          sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: [266, 270] },
+          front: o.equip === 'dumbbell' ? EQ.dbEnd(ha, 10) : EQ.plate(ha, 16)
+        };
+      }
+    };
+  }
+
+  /* Curl bayesiano: polea detrás, brazo por detrás del torso */
+  function curlBayesian() {
+    const hip = [204, 151], sh = pt(hip, -84, L.T), pulley = [36, 206];
+    const fr = leg(hip, [236, 264], -1), bk = leg(hip, [168, 264], -1);
+    const el = pt(sh, 116, L.UA);
+    return {
+      scene: SC.floor() + SC.post(22, 60) + SC.stack(2, 200, 26), first: 'con',
+      labels: { start: 'Brazo estirado por detrás', con: 'Flexión del codo', turn: 'Contracción', ecc: 'Regreso al estiramiento' },
+      build(t) {
+        const ha = pt(el, lerp(112, -40, t), L.FA);
+        return {
+          sk: { hip, sh, el, ha, kn: fr.kn, an: fr.an, to: [258, 270], kn2: bk.kn, an2: bk.an, to2: [188, 270] },
+          back: EQ.cable(pulley, ha),
+          front: EQ.grip(ha)
+        };
+      }
+    };
+  }
+
+  /* Curl concentrado sentado, codo apoyado en el muslo */
+  function curlConcentration() {
+    const hip = [176, 205], sh = pt(hip, -56, L.T);
+    const legs = leg(hip, [262, 264], -1);
+    const el = pt(sh, 88, L.UA);
+    return {
+      scene: SC.floor() + SC.seat(132, 206, 214), first: 'con',
+      labels: { con: 'Flexión del codo', turn: 'Contracción', ecc: 'Descenso controlado' },
+      build(t) {
+        const ha = pt(el, lerp(94, -78, t), L.FA);
+        return { sk: { hip, sh, el, ha, kn: legs.kn, an: legs.an, to: [284, 270], tilt: 14 }, front: EQ.dbEnd(ha, 9) };
+      }
+    };
+  }
 
   /* Cuerpo base para vistas frontales / posteriores (de pie) */
   function frontBody() {
@@ -1004,6 +1350,10 @@ const Animations = (() => {
       s += belly(add(m, [-4, h * 0.58]), add(mh, [-4, -2]), 2.4, mc(hl, 'lowerBack')) +
         belly(add(m, [4, h * 0.58]), add(mh, [4, -2]), 2.4, mc(hl, 'lowerBack'));
       if (sk.knL) s += ellipse(add(sk.hipL, [-2, 7]), 10.5, 9, mc(hl, 'glutes')) + ellipse(add(sk.hipR, [2, 7]), 10.5, 9, mc(hl, 'glutes'));
+    }
+    if (sk.knL && view === 'front') {
+      s += belly(add(sk.hipL, [-4, -16]), add(sk.hipL, [-9, 6]), 2.6, mc(hl, 'gluteMed')) +
+        belly(add(sk.hipR, [4, -16]), add(sk.hipR, [9, 6]), 2.6, mc(hl, 'gluteMed'));
     }
     if (sk.knL) {
       for (const [hp, kn, an] of [[sk.hipL, sk.knL, sk.anL], [sk.hipR, sk.knR, sk.anR]]) {

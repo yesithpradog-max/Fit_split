@@ -49,30 +49,30 @@ const Views = (() => {
     { id: 'metodo', label: 'Método' },
     { id: 'frecuencia', label: 'Frecuencia' },
     { id: 'dia', label: 'Ejercicios' },
-    { id: 'entrenar', label: 'Entrenar' }
+    { id: 'listo', label: 'Rutina lista' }
   ];
 
+  /* Indicador de pasos: solo informa en qué paso estás, no es un enlace */
   function planStepper(current) {
     const plan = currentPlan();
     const onboarded = WorkoutStore.isOnboarded();
     const ci = STEPS.findIndex(s => s.id === current);
-    const info = {
-      objetivo: { value: onboarded ? GOALS[WorkoutStore.getGoal()].name : '', href: '#/plan/objetivo' },
-      metodo: { value: plan ? plan.method.name : '', href: onboarded ? '#/plan/metodo' : null },
-      frecuencia: { value: plan ? plan.variant.name : '', href: plan ? '#/plan/frecuencia' : null },
-      dia: { value: '', href: null },
-      entrenar: { value: '', href: WorkoutStore.getActive() ? '#/entrenar' : null }
+    const values = {
+      objetivo: onboarded ? GOALS[WorkoutStore.getGoal()].name : '',
+      metodo: plan ? plan.method.name : '',
+      frecuencia: plan ? plan.variant.name : '',
+      dia: '',
+      listo: WorkoutStore.isConfigured() ? 'Tu panel' : ''
     };
-    return `<nav class="stepper" aria-label="Pasos de la planificación"><ol>
+    return `<div class="stepper" role="group" aria-label="Paso ${ci + 1} de ${STEPS.length} de la planificación"><ol>
       ${STEPS.map((s, i) => {
         const st = i < ci ? 'is-done' : i === ci ? 'is-current' : '';
-        const inner = `<span class="step-num">${i < ci ? icon('check') : i + 1}</span>
-          <span class="step-text"><span class="step-label">${s.label}</span>${info[s.id].value ? `<small>${esc(info[s.id].value)}</small>` : ''}</span>`;
-        return `<li class="${st}">${info[s.id].href && i !== ci
-          ? `<a href="${info[s.id].href}">${inner}</a>`
-          : `<span${i === ci ? ' aria-current="step"' : ''}>${inner}</span>`}</li>`;
+        return `<li class="${st}"${i === ci ? ' aria-current="step"' : ''}>
+          <span class="step-num" aria-hidden="true">${i < ci ? icon('check') : i + 1}</span>
+          <span class="step-text"><span class="step-label">${s.label}</span>${values[s.id] ? `<small>${esc(values[s.id])}</small>` : ''}</span>
+          ${i < ci ? '<span class="sr-only">(completado)</span>' : ''}</li>`;
       }).join('')}
-    </ol></nav>`;
+    </ol></div>`;
   }
 
   /* =====================================================================
@@ -186,13 +186,27 @@ const Views = (() => {
 
   function selectButton(ex, c) {
     const list = WorkoutStore.getGroup(c.m, c.v, c.d, c.g);
+    const cap = Coach.groupCap(c.m, c.v, c.d, c.g);
     const sel = list.includes(ex.id);
-    const full = !sel && list.length >= c.max;
+    const chk = sel ? { ok: true } : Coach.check(c.m, c.v, c.d, c.g, ex.id);
     const g = MUSCLE_GROUPS[c.g].name.toLowerCase();
-    return `<button type="button" class="btn btn-select btn-block${sel ? ' is-selected' : ''}" data-exd="select" aria-pressed="${sel}" ${full ? 'disabled' : ''}>
-        ${sel ? icon('check') + `<span>Elegido para ${esc(g)} · pulsa para quitar</span>` : icon('plus') + `<span>Elegir para ${esc(g)}</span>`}
+    return `<button type="button" class="btn btn-select btn-block${sel ? ' is-selected' : ''}" data-exd="select" aria-pressed="${sel}" ${chk.ok ? '' : 'disabled'}>
+        ${sel ? icon('check') + `<span>Elegido para ${esc(g)} · pulsa para quitar</span>` : chk.ok ? icon('plus') + `<span>Elegir para ${esc(g)}</span>` : icon('lock') + '<span>El entrenador no lo permite ahora</span>'}
       </button>
-      <p class="muted small">${list.length} de ${c.max} ejercicios elegidos en este grupo${full ? '. Quita uno para elegir este.' : '.'}</p>`;
+      ${chk.ok ? `<p class="muted small">${list.length} de ${cap} ejercicios elegidos en este grupo.</p>` : `<p class="coach-block">${icon('coach')}<span>${esc(chk.reason)}</span></p>`}`;
+  }
+
+  const DEMAND_NOTES = {
+    alta: 'Mucha fatiga general: el entrenador permite como máximo 2 por sesión.',
+    media: 'Fatiga moderada.',
+    baja: 'Poca fatiga general: ideal para sumar volumen.'
+  };
+
+  /* Recomendación del entrenador con sus estudios */
+  function recCallout(groupId) {
+    const r = RECOMMENDED[groupId];
+    return `<div class="callout callout-rec">${icon('star')}<div><p><strong>Recomendado por el entrenador.</strong> ${esc(r.why)}</p>
+      ${r.refs.length ? `<ul class="refs-mini">${r.refs.map(id => `<li><a href="${COACH_REFS[id].url}" target="_blank" rel="noopener">${esc(COACH_REFS[id].label)}</a></li>`).join('')}</ul>` : ''}</div></div>`;
   }
 
   function exerciseDetail(ex, { groupId, headingTag = 'h2', selectCtx } = {}) {
@@ -206,8 +220,9 @@ const Views = (() => {
       <div><dt>Dificultad</dt><dd>${UI.difficulty(ex.difficulty)}</dd></div>
       <div><dt>Tipo de movimiento</dt><dd>${esc(ex.movement)}</dd></div>
       <div><dt>Categoría</dt><dd>${ex.category === 'compuesto' ? 'Compuesto (varias articulaciones)' : 'Aislamiento (una articulación)'}</dd></div>
+      <div><dt>Exigencia</dt><dd>${UI.demandTag(ex)} <span class="muted small">${esc(DEMAND_NOTES[Coach.rating(ex.id).demand])}</span></dd></div>
     </dl>
-    ${rec ? `<p class="callout callout-rec">${icon('star')}<span><strong>Recomendado.</strong> ${esc(RECOMMENDED[groupId].why)}</span></p>` : ''}`;
+    ${rec ? recCallout(groupId) : ''}`;
     const goalTab = `<div class="seg seg-sm" role="radiogroup" aria-label="Objetivo">
         ${GOAL_ORDER.map(g => `<button type="button" role="radio" class="seg-btn" aria-checked="${g === goal}" data-exd-goal="${g}">${icon(GOAL_ICONS[g])}${esc(UI.goalName(g))}</button>`).join('')}
       </div><div data-goal-panel>${goalPanel(ex, goal)}</div>`;
@@ -254,8 +269,8 @@ const Views = (() => {
       }
       const s = e.target.closest('[data-exd="select"]');
       if (s && selectCtx && !s.disabled) {
-        const r = WorkoutStore.toggle(selectCtx.m, selectCtx.v, selectCtx.d, selectCtx.g, ex.id, selectCtx.max);
-        if (r === 'full') UI.toast('Has alcanzado el máximo para este grupo.', 'error');
+        const r = WorkoutStore.toggle(selectCtx.m, selectCtx.v, selectCtx.d, selectCtx.g, ex.id);
+        if (r === 'blocked') UI.toast(Coach.check(selectCtx.m, selectCtx.v, selectCtx.d, selectCtx.g, ex.id).reason, 'error');
         scope.querySelector('[data-exd-select]').innerHTML = selectButton(ex, selectCtx);
       }
     };
@@ -299,6 +314,19 @@ const Views = (() => {
   }
 
   function home() {
+    return WorkoutStore.isConfigured() && currentPlan() ? dashboard() : planningHome();
+  }
+
+  /* Primer día de entrenamiento que aún no tiene ejercicios válidos */
+  function nextIncompleteDay(plan, afterId) {
+    const days = Planner.trainingDays(plan.variant);
+    const start = afterId ? days.findIndex(d => d.id === afterId) + 1 : 0;
+    const ordered = [...days.slice(start), ...days.slice(0, start)];
+    return ordered.find(d => d.id !== afterId && !Planner.sessionProgress(plan.m, plan.v, d.id).complete) || null;
+  }
+
+  /* Inicio antes de terminar la rutina: la planificación paso a paso */
+  function planningHome() {
     const plan = currentPlan();
     const goal = GOALS[WorkoutStore.getGoal()];
     const topic = id => LEARN_TOPICS.find(t => t.id === id);
@@ -314,7 +342,8 @@ const Views = (() => {
         <a class="btn btn-ghost btn-sm" href="${href}">${cta}${icon('arrow-right')}</a>
       </li>`;
 
-    const nextHref = !plan ? '#/plan/metodo' : '#/plan/frecuencia';
+    const pending = plan && nextIncompleteDay(plan);
+    const nextHref = !plan ? '#/plan/metodo' : pending ? `#/plan/dia/${pending.id}` : '#/plan/frecuencia';
     const html = `
       <section class="dash">
         <div class="container">
@@ -323,12 +352,12 @@ const Views = (() => {
             <div class="dash-main">
               <div class="dash-hero">
                 <h1 tabindex="-1">Entiende tu entrenamiento. <span>Entrena con propósito.</span></h1>
-                <p class="lead">Planifica en tres pasos, aprende cómo se hace cada ejercicio y entrena guiado, ejercicio por ejercicio.</p>
+                <p class="lead">Define tu objetivo, tu método y tu frecuencia, elige los ejercicios de cada día con la ayuda del entrenador y tendrás tu panel personal para entrenar.</p>
               </div>
               <section class="plan-box" aria-labelledby="plan-title">
                 <div class="box-head">
                   <h2 id="plan-title">Tu planificación, paso a paso</h2>
-                  <a class="btn btn-primary" href="${nextHref}">${plan ? 'Elegir ejercicios y entrenar' : 'Continuar planificación'}${icon('arrow-right')}</a>
+                  <a class="btn btn-primary" href="${nextHref}">${plan ? (pending ? 'Elegir ejercicios' : 'Revisar y finalizar') : 'Continuar planificación'}${icon('arrow-right')}</a>
                 </div>
                 <ol class="step-cards">
                   ${stepCard(1, 'Definir objetivo', goal.name, esc(goal.tagline), '#/plan/objetivo', 'Cambiar')}
@@ -365,6 +394,200 @@ const Views = (() => {
         async abandon() {
           const ok = await UI.confirm({ title: 'Descartar entrenamiento', text: 'Se perderá el progreso del entrenamiento en curso. Tu selección de ejercicios se mantiene.', confirmLabel: 'Descartar', danger: true });
           if (ok) { WorkoutStore.abandonWorkout(); UI.toast('Entrenamiento descartado.'); }
+        }
+      }
+    };
+  }
+
+  /* =====================================================================
+     PANEL PERSONAL (inicio una vez preparada la rutina)
+     Se mantiene cada vez que el usuario vuelve a abrir la página.
+     ===================================================================== */
+  const STREAK_LEVELS = [
+    [0, 'Empieza hoy tu racha: cada entrenamiento cuenta.'],
+    [1, 'Primer paso dado. La constancia es lo que da resultados.'],
+    [3, 'Buen ritmo. Mantén los días planificados de cada semana.'],
+    [8, 'Ya es un hábito. Sigue así.'],
+    [20, 'Constancia de verdad. Recuerda: comer y dormir bien multiplican este trabajo.']
+  ];
+
+  function streakCard(st) {
+    const msg = STREAK_LEVELS.filter(([n]) => st.current >= n).pop()[1];
+    return `<section class="streak-card${st.current ? ' is-on' : ''}" aria-labelledby="streak-title">
+      <div class="streak-main">
+        <span class="streak-flame">${icon('flame')}</span>
+        <div>
+          <h2 id="streak-title" class="streak-label">Tu racha</h2>
+          <p class="streak-num"><strong class="mono">${st.current}</strong> <span>${st.current === 1 ? 'entrenamiento' : 'entrenamientos'} seguidos</span></p>
+        </div>
+      </div>
+      <p class="streak-msg">${esc(msg)}</p>
+      <ol class="streak-week" aria-label="Esta semana: ${st.week.done} de ${st.week.required} entrenamientos">
+        ${st.week.days.map((d, i) => {
+          const cls = d.trained ? 'is-trained' : !d.scheduled ? 'is-rest' : d.beforeStart ? 'is-off' : d.isPast ? 'is-missed' : 'is-planned';
+          const label = d.trained ? 'entrenado' : !d.scheduled ? 'descanso' : d.beforeStart ? 'antes de empezar tu plan' : d.isPast ? 'pendiente' : 'planificado';
+          return `<li class="${cls}${d.isToday ? ' is-today' : ''}" title="${DAYS[i].name}: ${label}"><span>${DAYS[i].short.charAt(0)}</span><i>${d.trained ? icon('check') : ''}</i></li>`;
+        }).join('')}
+      </ol>
+      <dl class="streak-stats">
+        <div><dt>Esta semana</dt><dd class="mono">${st.week.done}/${st.week.required}</dd></div>
+        <div><dt>Mejor racha</dt><dd class="mono">${st.best}</dd></div>
+        <div><dt>Total</dt><dd class="mono">${st.total}</dd></div>
+      </dl>
+      <p class="streak-rule">${icon('info')}<span>La racha se mantiene mientras cumplas los días planificados de cada semana. Si un día no puedes, recupéralo otro día de esa misma semana.</span></p>
+    </section>`;
+  }
+
+  /* Lista corta de la rutina de un día, ya ordenada */
+  function routinePreview(plan, dayId, max = 4) {
+    const order = Planner.orderRoutine(plan.m, plan.v, dayId);
+    const extra = order.length - max;
+    return `<ol class="mini-routine">${order.slice(0, max).map(it => `<li class="tone-${UI.toneOfGroup(it.g)}"><span class="dot"></span>${esc(EXERCISE_INDEX[it.id].name)}</li>`).join('')}
+      ${extra > 0 ? `<li class="more">+ ${UI.plural(extra, 'ejercicio más', 'ejercicios más')}</li>` : ''}</ol>`;
+  }
+
+  function todayCard(plan, st) {
+    const today = DAYS.find(d => d.id === st.todayId);
+    const s = Planner.sessionFor(plan.variant, today.id);
+    const nextDay = () => {
+      const days = DAYS.map(d => d.id);
+      const i = days.indexOf(today.id);
+      for (let k = 1; k <= 7; k++) {
+        const id = days[(i + k) % 7];
+        if (plan.variant.schedule[id]) return DAYS.find(d => d.id === id);
+      }
+      return null;
+    };
+    if (WorkoutStore.getActive()) {
+      return `<section class="today-card is-info"><p class="eyebrow">Hoy</p><h2>Tienes un entrenamiento a medias</h2><p class="muted">Continúalo desde el aviso de arriba o descártalo para empezar otro.</p></section>`;
+    }
+    if (s.id === 'rest' || st.trainedToday) {
+      const nd = nextDay();
+      const ns = nd && Planner.sessionFor(plan.variant, nd.id);
+      const p = nd && Planner.sessionProgress(plan.m, plan.v, nd.id);
+      return `<section class="today-card${st.trainedToday ? ' is-done' : ' is-rest'}" aria-labelledby="today-title">
+        <p class="eyebrow">Hoy · ${today.name}</p>
+        <h2 id="today-title">${st.trainedToday ? `${icon('check')}Entrenamiento de hoy completado` : `${icon('moon')}Día de descanso`}</h2>
+        <p class="muted">${st.trainedToday ? 'Buen trabajo. Ahora toca comer bien y descansar: ahí es donde el músculo se adapta.' : 'La adaptación ocurre durante la recuperación. Aprovecha para dormir bien y cuidar la alimentación.'}</p>
+        ${nd ? `<div class="today-next tone-${ns.tone}"><p>Próximo: <strong>${nd.name} · <span class="tone-text">${esc(ns.name)}</span></strong></p>
+          ${p.complete ? `<button type="button" class="btn btn-ghost btn-sm" data-action="start-day" data-d="${nd.id}">${icon('play')}<span>Adelantarlo hoy</span></button>`
+            : `<a class="btn btn-ghost btn-sm" href="#/plan/dia/${nd.id}">Completar sus ejercicios</a>`}</div>` : ''}
+      </section>`;
+    }
+    const p = Planner.sessionProgress(plan.m, plan.v, today.id);
+    if (!p.complete) {
+      return `<section class="today-card tone-${s.tone}" aria-labelledby="today-title">
+        <p class="eyebrow">Hoy · ${today.name}</p>
+        <h2 id="today-title">Hoy toca <span class="tone-text">${esc(s.name)}</span></h2>
+        <p class="muted">Este día aún no tiene una rutina válida.${p.coach && p.coach.violations.length ? ' El entrenador ha detectado límites superados.' : ''}</p>
+        <a class="btn btn-primary btn-lg" href="#/plan/dia/${today.id}">Completar ejercicios${icon('arrow-right')}</a>
+      </section>`;
+    }
+    return `<section class="today-card tone-${s.tone}" aria-labelledby="today-title">
+      <p class="eyebrow">Hoy · ${today.name}</p>
+      <h2 id="today-title">Hoy toca <span class="tone-text">${esc(s.name)}</span></h2>
+      <p class="today-meta">${icon('dumbbell')}${UI.plural(p.coach.count, 'ejercicio', 'ejercicios')} · ${p.coach.sets} series · ${icon('clock')}≈ ${p.coach.minutes} min</p>
+      ${routinePreview(plan, today.id)}
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg btn-pulse" data-action="start-day" data-d="${today.id}">${icon('play')}<span>Empezar entrenamiento</span></button>
+        <a class="btn btn-ghost" href="#/plan/dia/${today.id}">${icon('edit')}<span>Editar</span></a>
+      </div>
+    </section>`;
+  }
+
+  function weekList(plan, st) {
+    return `<div class="week-list">${DAYS.map((day, i) => {
+      const s = Planner.sessionFor(plan.variant, day.id);
+      const info = st.week.days[i];
+      const badge = info.isToday ? '<span class="badge badge-today">Hoy</span>' : '';
+      if (s.id === 'rest') {
+        return `<article class="wk-day is-rest${info.isToday ? ' is-today' : ''}">
+          <header><span class="wk-name">${day.name}</span>${badge}${info.trained ? `<span class="badge badge-ok">${icon('check')}Hecho</span>` : ''}</header>
+          <p class="wk-session">${icon('moon')}Descanso</p></article>`;
+      }
+      const p = Planner.sessionProgress(plan.m, plan.v, day.id);
+      const status = info.trained ? `<span class="badge badge-ok">${icon('check')}Hecho</span>` : info.isPast && !info.beforeStart ? '<span class="badge badge-warn">Pendiente</span>' : '';
+      return `<article class="wk-day tone-${s.tone}${info.isToday ? ' is-today' : ''}">
+        <header><span class="wk-name">${day.name}</span>${badge}${status}</header>
+        <p class="wk-session tone-text">${esc(s.name)}</p>
+        ${p.complete ? `<p class="wk-meta">${UI.plural(p.coach.count, 'ejercicio', 'ejercicios')} · ≈ ${p.coach.minutes} min</p>${routinePreview(plan, day.id, 3)}`
+          : `<p class="wk-meta wk-warn">${icon('alert')}${p.coach && p.coach.violations.length ? 'Supera los límites del entrenador' : 'Faltan ejercicios'}</p>`}
+        <div class="wk-actions">
+          ${p.complete ? `<button type="button" class="btn btn-primary btn-sm" data-action="start-day" data-d="${day.id}">${icon('play')}<span>Entrenar</span></button>` : ''}
+          <a class="btn btn-ghost btn-sm" href="#/plan/dia/${day.id}">${p.complete ? `${icon('edit')}<span>Editar</span>` : '<span>Completar</span>'}</a>
+        </div>
+      </article>`;
+    }).join('')}</div>`;
+  }
+
+  function planSettings(plan) {
+    const goal = GOALS[WorkoutStore.getGoal()];
+    const card = (label, value, text, href, cta, ic) => `<div class="setting-card">
+      <span class="setting-icon">${icon(ic)}</span>
+      <div><p class="setting-label">${label}</p><p class="setting-value">${esc(value)}</p><p class="muted small">${esc(text)}</p></div>
+      <a class="btn btn-ghost btn-sm" href="${href}">${cta}</a></div>`;
+    return `<div class="settings-grid">
+        ${card('Objetivo', goal.name, goal.tagline, '#/plan/objetivo', 'Cambiar objetivo', GOAL_ICONS[goal.id] || 'target')}
+        ${card('Método', plan.method.name, plan.method.tagline, '#/plan/metodo', 'Cambiar método', 'split')}
+        ${card('Frecuencia', plan.variant.name, plan.variant.description, '#/plan/frecuencia', 'Cambiar frecuencia', 'calendar')}
+        ${card('Rutina actual', `${UI.plural(WorkoutStore.countSelected(plan.m, plan.v), 'ejercicio elegido', 'ejercicios elegidos')}`, 'Cambia los ejercicios de cualquier día. El entrenador revisa cada cambio.', '#/plan/frecuencia', 'Modificar rutina', 'edit')}
+      </div>
+      <p class="callout">${icon('info')}<span>Si cambias de método o frecuencia, tu rutina actual queda guardada por si vuelves a ella.</span></p>
+      <div class="danger-zone">
+        <div><strong>Empezar de cero</strong><p class="muted small">Borra tu objetivo, tu plan, tus rutinas y tu racha de este navegador.</p></div>
+        <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="reset-all">${icon('trash')}<span>Borrar mis datos</span></button>
+      </div>`;
+  }
+
+  function dashboard() {
+    const plan = currentPlan();
+    const goal = GOALS[WorkoutStore.getGoal()];
+    const st = WorkoutStore.getStreak();
+    const topic = id => LEARN_TOPICS.find(t => t.id === id);
+    const html = `
+      <section class="dash dash-me">
+        <div class="container">
+          ${resumeCard()}
+          <div class="me-head">
+            <div>
+              <p class="eyebrow">Tu panel</p>
+              <h1 tabindex="-1">Tu entrenamiento</h1>
+            </div>
+            <ul class="plan-chips" aria-label="Tu plan">
+              <li class="chip chip-static goal-${goal.id}">${icon(GOAL_ICONS[goal.id] || 'target')}${esc(goal.name)}</li>
+              <li class="chip chip-static tone-${plan.method.tone}"><span class="dot"></span>${esc(plan.method.name)}</li>
+              <li class="chip chip-static">${icon('calendar')}${esc(plan.variant.name)}</li>
+            </ul>
+          </div>
+          <div class="me-grid">
+            ${todayCard(plan, st)}
+            ${streakCard(st)}
+          </div>
+          ${UI.tabs('me', [
+            { id: 'semana', label: 'Mi semana', html: weekList(plan, st) },
+            { id: 'plan', label: 'Mi plan', html: planSettings(plan) },
+            { id: 'fundamentos', label: 'Fundamentos', html: `<div class="topic-grid">${FUNDAMENTALS.map((id, i) => UI.topicCard(topic(id), { featured: i === 0 })).join('')}</div>
+              <div class="explore-grid explore-row">
+                <a class="explore-tile" href="#/ejercicios">${icon('dumbbell')}<span><strong>Ejercicios</strong><small>${EXERCISES.length} con animación</small></span></a>
+                <a class="explore-tile" href="#/aprende">${icon('book')}<span><strong>Aprende</strong><small>${LEARN_TOPICS.length} temas</small></span></a>
+                <a class="explore-tile" href="#/sobre">${icon('info')}<span><strong>Sobre FIT SPLIT</strong><small>El proyecto</small></span></a>
+              </div>` }
+          ])}
+        </div>
+      </section>`;
+    return {
+      title: 'Tu panel',
+      html,
+      reactive: true,
+      actions: {
+        'start-day'(el) { startDay(el.dataset.d); },
+        async abandon() {
+          const ok = await UI.confirm({ title: 'Descartar entrenamiento', text: 'Se perderá el progreso del entrenamiento en curso y no contará para la racha. Tu rutina se mantiene.', confirmLabel: 'Descartar', danger: true });
+          if (ok) { WorkoutStore.abandonWorkout(); UI.toast('Entrenamiento descartado.'); }
+        },
+        async 'reset-all'() {
+          const ok = await UI.confirm({ title: 'Borrar mis datos', text: 'Se borrarán tu objetivo, tu plan, todas tus rutinas, tu historial y tu racha. No se puede deshacer.', confirmLabel: 'Borrar todo', danger: true });
+          if (ok) { WorkoutStore.resetAll(); go('#/plan/objetivo'); }
         }
       }
     };
@@ -411,8 +634,8 @@ const Views = (() => {
       actions: {
         'choose-goal'(el) {
           WorkoutStore.setGoal(el.dataset.goal);
-          UI.toast(`Objetivo: ${GOALS[el.dataset.goal].name}.`);
-          go(currentPlan() ? '#/plan/frecuencia' : '#/plan/metodo');
+          UI.toast(`Objetivo: ${GOALS[el.dataset.goal].name}. El entrenador ha ajustado series, descansos y límites.`);
+          go(WorkoutStore.isConfigured() && currentPlan() ? '#/' : currentPlan() ? '#/plan/frecuencia' : '#/plan/metodo');
         }
       }
     };
@@ -518,14 +741,14 @@ const Views = (() => {
         return `<div class="day-tile is-rest"><span class="day-name">${day.name}</span><span class="day-session">${icon('moon')}Descanso</span><span class="day-groups">Recuperación</span></div>`;
       }
       const p = Planner.sessionProgress(m, v, day.id);
-      return `<div class="day-tile tone-${s.tone}${p.complete ? ' is-complete' : ''}">
+      const over = p.coach && p.coach.violations.length;
+      return `<div class="day-tile tone-${s.tone}${p.complete ? ' is-complete' : ''}${over ? ' is-over' : ''}">
         <span class="day-name">${day.name}</span>
         <span class="day-session">${esc(s.name)}</span>
         <span class="day-groups">${p.perGroup.map(g => esc(g.group.short || g.group.name)).join(' · ')}</span>
-        <span class="day-status">${p.complete ? icon('check') + UI.plural(p.done, 'ejercicio listo', 'ejercicios listos') : p.done ? `${p.done} elegidos · faltan grupos` : 'Sin ejercicios'}</span>
+        <span class="day-status">${p.complete ? icon('check') + `${UI.plural(p.coach.count, 'ejercicio', 'ejercicios')} · ≈ ${p.coach.minutes} min` : over ? icon('alert') + 'Supera los límites del entrenador' : p.done ? `${p.done} elegidos · faltan grupos` : 'Sin ejercicios'}</span>
         <span class="day-actions">
-          <a class="btn btn-ghost btn-sm" href="#/plan/dia/${day.id}">${p.done ? 'Editar' : 'Elegir ejercicios'}</a>
-          ${p.complete ? `<button type="button" class="btn btn-primary btn-sm" data-action="start-day" data-d="${day.id}">${icon('play')}<span>Entrenar</span></button>` : ''}
+          <a class="btn ${p.complete ? 'btn-ghost' : 'btn-secondary'} btn-sm" href="#/plan/dia/${day.id}">${p.done ? `${icon('edit')}<span>Editar</span>` : 'Elegir ejercicios'}</a>
         </span>
       </div>`;
     }).join('');
@@ -546,6 +769,34 @@ const Views = (() => {
     return plan.method.variants.map(x => `<button type="button" role="radio" class="seg-btn" data-action="choose-variant" data-v="${x.id}" aria-checked="${x.id === plan.v}">${icon('calendar')}${esc(x.name)}</button>`).join('');
   }
 
+  /* Acciones de la semana: siguiente día pendiente, autocompletar o finalizar */
+  function freqCta(plan) {
+    const pending = nextIncompleteDay(plan);
+    const configured = WorkoutStore.isConfigured();
+    return `${pending ? `<button type="button" class="btn btn-ghost" data-action="autofill-week">${icon('wand')}<span>Completar los días pendientes con el entrenador</span></button>` : ''}
+      ${pending ? `<a class="btn btn-primary btn-lg" href="#/plan/dia/${pending.id}">Elegir ejercicios: ${pending.name.toLowerCase()}${icon('arrow-right')}</a>`
+        : configured ? `<a class="btn btn-primary btn-lg" href="#/">${icon('home')}<span>Volver a mi panel</span></a>`
+        : `<button type="button" class="btn btn-primary btn-lg btn-pulse" data-action="finish-routine">${icon('flag')}<span>Finalizar rutina</span></button>`}`;
+  }
+
+  /* Rutina terminada: a partir de aquí el inicio es el panel personal */
+  function finishRoutine() {
+    const first = !WorkoutStore.isConfigured();
+    WorkoutStore.setConfigured(true);
+    UI.toast(first ? '¡Rutina lista! Este es tu panel: desde aquí entrenarás cada día.' : 'Cambios guardados.');
+    go('#/');
+  }
+
+  function autofillWeek(plan) {
+    let n = 0;
+    for (const d of Planner.trainingDays(plan.variant)) {
+      if (Planner.sessionProgress(plan.m, plan.v, d.id).complete) continue;
+      WorkoutStore.setSelection(plan.m, plan.v, d.id, Coach.autofill(plan.m, plan.v, d.id));
+      n += 1;
+    }
+    UI.toast(`El entrenador completó ${UI.plural(n, 'día', 'días')}. Revisa y cambia lo que quieras.`);
+  }
+
   function frequencyStep() {
     const plan = currentPlan();
     if (!plan) return { redirect: WorkoutStore.isOnboarded() ? '#/plan/metodo' : '#/plan/objetivo' };
@@ -561,6 +812,7 @@ const Views = (() => {
             <div class="seg freq-tabs" role="radiogroup" aria-label="Frecuencia" id="freq-tabs">${freqTabs(plan)}</div>
           </div>
           <div id="freq-body">${weekCards(plan)}</div>
+          <div class="freq-cta" id="freq-cta">${freqCta(plan)}</div>
         </div>
       </section>`;
     return {
@@ -572,6 +824,7 @@ const Views = (() => {
         root.querySelector('#freq-tabs').innerHTML = freqTabs(p);
         root.querySelector('#freq-body').innerHTML = weekCards(p);
         root.querySelector('#stepper-slot').innerHTML = planStepper('frecuencia');
+        root.querySelector('#freq-cta').innerHTML = freqCta(p);
       },
       actions: {
         'choose-variant'(el) {
@@ -580,7 +833,8 @@ const Views = (() => {
           const btn = document.querySelector(`[data-action="choose-variant"][data-v="${el.dataset.v}"]`);
           if (btn) btn.focus({ preventScroll: true });
         },
-        'start-day'(el) { startDay(el.dataset.d); }
+        'autofill-week'() { autofillWeek(currentPlan()); },
+        'finish-routine'() { finishRoutine(); }
       }
     };
   }
@@ -624,7 +878,8 @@ const Views = (() => {
     const groupPane = () => {
       const g = groups.find(x => x.id === groupByDay[memKey]);
       const list = WorkoutStore.getGroup(m, v, dayId, g.id);
-      const full = list.length >= g.max;
+      const cap = Coach.groupCap(m, v, dayId, g.id);
+      const full = list.length >= cap;
       const next = groups[groups.indexOf(g) + 1];
       return `<div class="group-pane-head tone-${UI.toneOfGroup(g.id)}">
           <div>
@@ -632,46 +887,75 @@ const Views = (() => {
             <p class="muted">${esc(g.group.role)}</p>
           </div>
           <div class="counter${full ? ' is-full' : ''}" aria-live="polite">
-            <p><strong class="mono">${list.length} / ${g.max}</strong> elegidos</p>
-            ${UI.progress(list.length, g.max, `Ejercicios elegidos de ${g.group.name}`)}
+            <p><strong class="mono">${list.length} / ${cap}</strong> elegidos</p>
+            ${UI.progress(list.length, cap, `Ejercicios elegidos de ${g.group.name}`)}
           </div>
         </div>
-        ${RECOMMENDED[g.id] ? `<p class="rec-note">${icon('star')}<span><strong>Recomendados:</strong> ${esc(RECOMMENDED[g.id].why)}</span></p>` : ''}
-        <p class="limit-note">${icon('info')}<span>${full ? `Máximo alcanzado (${g.max}). Quita uno para cambiarlo.` : `Elige hasta ${g.max}. ${s.hint ? esc(s.hint) : ''}`}</span></p>
+        ${RECOMMENDED[g.id] ? `<details class="rec-note"><summary>${icon('star')}<span><strong>Recomendados por el entrenador:</strong> ${esc(RECOMMENDED[g.id].why)}</span></summary>
+          ${RECOMMENDED[g.id].refs.length ? `<ul class="refs-mini">${RECOMMENDED[g.id].refs.map(id => `<li><a href="${COACH_REFS[id].url}" target="_blank" rel="noopener">${esc(COACH_REFS[id].label)}</a></li>`).join('')}</ul>` : '<p class="muted small">Criterio del entrenador: tensión en todo el recorrido y buena carga en la posición estirada.</p>'}</details>` : ''}
+        <p class="limit-note">${icon('info')}<span>${full ? `Máximo alcanzado (${cap}). Quita uno para cambiarlo.` : `Elige ${g.min > 1 ? `entre ${g.min} y ${cap}` : `hasta ${cap}`}. ${s.hint ? esc(s.hint) : ''}`}</span></p>
         <div class="ex-grid">
           ${Planner.exercisesFor(g.id).map((ex, i) => UI.exerciseCard(ex, {
-            groupId: g.id, selectable: true, index: i,
-            selected: list.includes(ex.id), disabled: full && !list.includes(ex.id)
+            groupId: g.id, selectable: true, index: Math.min(i, 8),
+            selected: list.includes(ex.id), block: list.includes(ex.id) ? null : Coach.check(m, v, dayId, g.id, ex.id)
           })).join('')}
         </div>
         ${next && list.length >= g.min ? `<div class="group-next"><button type="button" class="btn btn-secondary" data-action="pick-group" data-g="${next.id}">Siguiente grupo: ${esc(next.group.name)}${icon('arrow-right')}</button></div>` : ''}`;
     };
 
+    /* Botón principal: guardar y pasar al siguiente día pendiente */
+    const primaryAction = (p, compact) => {
+      const pending = nextIncompleteDay(plan, dayId);
+      const label = pending ? (compact ? 'Guardar y seguir' : `Guardar y continuar: ${pending.name.toLowerCase()}`)
+        : WorkoutStore.isConfigured() ? 'Guardar cambios' : 'Finalizar rutina';
+      return `<button type="button" class="btn btn-primary${compact ? '' : ' btn-lg btn-block'}${p.complete ? ' btn-pulse' : ''}" data-action="save-day" ${p.complete ? '' : 'disabled'}>
+        ${icon(pending ? 'arrow-right' : 'flag')}<span>${label}</span></button>`;
+    };
+
+    const coachPanel = p => {
+      const c = p.coach;
+      const meter = (label, value, cap, warn) => `<div class="cm${warn ? ' is-warn' : ''}"><dt>${label}</dt><dd class="mono">${value}${cap != null ? `<small>/${cap}</small>` : ''}</dd></div>`;
+      return `<section class="coach-panel" aria-labelledby="coach-title">
+        <h3 id="coach-title">${icon('coach')}Control del entrenador</h3>
+        <dl class="coach-meters">
+          ${meter('Ejercicios', c.count, c.cap, c.count > c.cap)}
+          ${meter('Exigentes', c.high, c.highCap, c.high > c.highCap)}
+          ${meter('Series', c.sets)}
+          ${meter('Minutos', c.minutes ? `≈${c.minutes}` : '—', null)}
+        </dl>
+        ${c.violations.map(t => `<p class="coach-msg is-bad">${icon('alert')}<span>${esc(t)}</span></p>`).join('')}
+        ${c.notes.map(t => `<p class="coach-msg">${icon('info')}<span>${esc(t)}</span></p>`).join('')}
+        ${!c.violations.length && !c.notes.length && c.count ? `<p class="coach-msg is-ok">${icon('check')}<span>Selección dentro de los límites seguros.</span></p>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm btn-block" data-action="autofill-day">${icon('wand')}<span>${p.done ? 'Completar con el entrenador' : 'Que el entrenador elija por mí'}</span></button>
+      </section>`;
+    };
+
     const routinePanel = () => {
       const p = Planner.sessionProgress(m, v, dayId);
       const order = Planner.orderRoutine(m, v, dayId);
-      const copyFrom = !p.done ? Planner.trainingDays(variant).filter(d => d.id !== dayId && variant.schedule[d.id] === s.id && Planner.sessionProgress(m, v, d.id).done) : [];
+      const copyFrom = !p.done ? Planner.trainingDays(variant).filter(d => d.id !== dayId && variant.schedule[d.id] === s.id && Planner.sessionProgress(m, v, d.id).complete) : [];
       const missing = p.perGroup.filter(x => !x.ready).map(x => x.group.name);
-      return `<h2>Tu rutina</h2>
-        <p class="muted small routine-sub">${icon('list')}<span>Orden automático: compuestos y músculos grandes primero, aislamientos al final.</span></p>
+      return `${coachPanel(p)}
+        <h2>Tu rutina</h2>
+        <p class="muted small routine-sub">${icon('list')}<span>Orden automático: compuestos y músculos grandes primero, los más exigentes cuando estás fresco, aislamientos al final.</span></p>
         ${order.length ? `<ol class="routine-list">${order.map((it, i) => {
           const ex = EXERCISE_INDEX[it.id];
           return `<li class="tone-${UI.toneOfGroup(it.g)}">
             <span class="routine-n mono">${i + 1}</span>
-            <div><strong>${esc(ex.name)}</strong><small><span class="dot"></span>${esc(MUSCLE_GROUPS[it.g].name)}</small></div>
+            <div><strong>${esc(ex.name)}</strong><small><span class="dot"></span>${esc(MUSCLE_GROUPS[it.g].name)} · ${Coach.setsFor(ex)} series</small></div>
           </li>`;
         }).join('')}</ol>` : '<p class="routine-empty">Elige ejercicios en cada grupo y aquí verás el orden en que los harás.</p>'}
-        ${copyFrom.map(d => `<button type="button" class="btn btn-ghost btn-sm btn-block" data-action="copy-day" data-from="${d.id}">${icon('copy')}<span>Copiar la selección del ${d.name.toLowerCase()}</span></button>`).join('')}
-        <button type="button" class="btn btn-primary btn-lg btn-block${p.complete ? ' btn-pulse' : ''}" data-action="start-workout" ${p.complete ? '' : 'disabled'}>${icon('play')}<span>Iniciar entrenamiento</span></button>
-        ${p.complete ? '' : `<p class="routine-hint">${icon('info')}<span>Falta elegir: ${missing.map(esc).join(', ')}.</span></p>`}
+        ${copyFrom.map(d => `<button type="button" class="btn btn-ghost btn-sm btn-block" data-action="copy-day" data-from="${d.id}">${icon('copy')}<span>Copiar la rutina del ${d.name.toLowerCase()}</span></button>`).join('')}
+        ${primaryAction(p, false)}
+        ${p.complete ? '' : `<p class="routine-hint">${icon('info')}<span>${p.coach && p.coach.violations.length ? 'Corrige los avisos del entrenador para continuar.' : `Falta elegir: ${missing.map(esc).join(', ')}.`}</span></p>`}
         ${p.done ? `<button type="button" class="btn btn-ghost btn-sm btn-block btn-danger-text" data-action="clear-day">${icon('trash')}<span>Vaciar el día</span></button>` : ''}`;
     };
 
     const mobileBar = () => {
       const p = Planner.sessionProgress(m, v, dayId);
       const ready = p.perGroup.filter(x => x.ready).length;
-      return `<p><strong>${UI.plural(p.done, 'ejercicio', 'ejercicios')}</strong> · ${ready}/${p.perGroup.length} grupos listos</p>
-        <button type="button" class="btn btn-primary${p.complete ? ' btn-pulse' : ''}" data-action="start-workout" ${p.complete ? '' : 'disabled'}>${icon('play')}<span>Iniciar</span></button>`;
+      return `<p><strong>${UI.plural(p.done, 'ejercicio', 'ejercicios')}</strong> · ${ready}/${p.perGroup.length} grupos${p.coach && p.coach.minutes ? ` · ≈${p.coach.minutes} min` : ''}</p>
+        ${primaryAction(p, true)}`;
     };
 
     const html = `
@@ -682,7 +966,7 @@ const Views = (() => {
             <div>
               <p class="eyebrow">${esc(method.name)} · ${esc(variant.name)}</p>
               <h1 tabindex="-1">${day.name} · <span class="tone-text">${esc(s.name)}</span></h1>
-              <p class="muted">Elige los ejercicios de cada grupo. Nosotros los ordenamos de la forma más eficaz.</p>
+              <p class="muted">Elige los ejercicios de cada grupo. El entrenador controla la carga de la sesión y los ordena de la forma más eficaz.</p>
             </div>
             <nav class="day-switch" aria-label="Días de entrenamiento">
               ${Planner.trainingDays(variant).map(d => {
@@ -731,20 +1015,32 @@ const Views = (() => {
         'toggle-exercise'(el) {
           const g = groups.find(x => x.id === groupByDay[memKey]);
           const before = Planner.sessionProgress(m, v, dayId).complete;
-          const r = WorkoutStore.toggle(m, v, dayId, g.id, el.dataset.ex, g.max);
-          if (r === 'full') UI.toast(`Máximo de ${g.max} ejercicios para ${g.group.name.toLowerCase()}.`, 'error');
-          if (!before && Planner.sessionProgress(m, v, dayId).complete) UI.toast('¡Listo! Ya puedes iniciar el entrenamiento.');
+          const chk = Coach.check(m, v, dayId, g.id, el.dataset.ex);
+          const r = WorkoutStore.toggle(m, v, dayId, g.id, el.dataset.ex);
+          if (r === 'blocked') UI.toast(chk.reason, 'error');
+          if (!before && Planner.sessionProgress(m, v, dayId).complete) UI.toast('Día completo. Pulsa «Guardar» para continuar.');
         },
         'open-exercise'(el) {
           const g = groups.find(x => x.id === groupByDay[memKey]);
-          openExercise(el.dataset.ex, { groupId: g.id, selectCtx: { m, v, d: dayId, g: g.id, max: g.max } });
+          openExercise(el.dataset.ex, { groupId: g.id, selectCtx: { m, v, d: dayId, g: g.id } });
         },
         'copy-day'(el) { WorkoutStore.copySession(m, v, el.dataset.from, dayId); UI.toast('Selección copiada.'); },
         async 'clear-day'() {
           const ok = await UI.confirm({ title: 'Vaciar el día', text: `Se quitarán todos los ejercicios del ${day.name.toLowerCase()}.`, confirmLabel: 'Vaciar', danger: true });
           if (ok) WorkoutStore.clearSession(m, v, dayId);
         },
-        'start-workout'() { startDay(dayId); }
+        'autofill-day'() {
+          WorkoutStore.setSelection(m, v, dayId, Coach.autofill(m, v, dayId));
+          UI.toast('El entrenador completó el día. Puedes cambiar cualquier ejercicio.');
+        },
+        'save-day'() {
+          if (!Planner.sessionProgress(m, v, dayId).complete) return;
+          const pending = nextIncompleteDay(plan, dayId);
+          if (pending) {
+            UI.toast(`${day.name} guardado. Ahora: ${pending.name.toLowerCase()}.`);
+            go(`#/plan/dia/${pending.id}`);
+          } else finishRoutine();
+        }
       }
     };
   }
@@ -763,12 +1059,14 @@ const Views = (() => {
     const g = GOALS[a.goal];
     const renderedIndex = a.index;
     const isLast = a.index === a.items.length - 1;
+    const nSets = Coach.setsFor(ex, a.goal);
+    const restSec = Coach.restFor(ex, a.goal);
     let cleanupAnim = null, restTimer = null;
 
     const progressBar = () => {
       const cur = WorkoutStore.getActive();
       return cur.items.map((it, i) => {
-        const done = (cur.done[i] || 0) >= g.setsNum;
+        const done = (cur.done[i] || 0) >= Coach.setsFor(EXERCISE_INDEX[it.id], cur.goal);
         return `<li><button type="button" class="pp-seg${i === cur.index ? ' is-current' : ''}${done ? ' is-done' : ''}" data-action="go-exercise" data-i="${i}"
           aria-label="Ejercicio ${i + 1}: ${esc(EXERCISE_INDEX[it.id].name)}${done ? ', completado' : ''}"${i === cur.index ? ' aria-current="step"' : ''}><span></span></button></li>`;
       }).join('');
@@ -777,15 +1075,15 @@ const Views = (() => {
     const setsBlock = () => {
       const cur = WorkoutStore.getActive();
       const done = cur.done[cur.index] || 0;
-      return `<div class="sets-head"><span>Series completadas</span><strong class="mono">${done} / ${g.setsNum}</strong></div>
-        <div class="set-row">${Array.from({ length: g.setsNum }, (_, k) => `<button type="button" class="set-btn${k < done ? ' is-done' : ''}" data-action="toggle-set" data-k="${k}" aria-pressed="${k < done}" data-focus="set-${k}">
+      return `<div class="sets-head"><span>Series completadas</span><strong class="mono">${done} / ${nSets}</strong></div>
+        <div class="set-row">${Array.from({ length: nSets }, (_, k) => `<button type="button" class="set-btn${k < done ? ' is-done' : ''}" data-action="toggle-set" data-k="${k}" aria-pressed="${k < done}" data-focus="set-${k}">
           ${k < done ? icon('check') : `<span class="mono">${k + 1}</span>`}<span>Serie ${k + 1}</span></button>`).join('')}</div>
-        ${done >= g.setsNum ? `<p class="sets-done">${icon('check')}<span>¡Ejercicio completado! ${isLast ? 'Pulsa «Finalizar entrenamiento».' : 'Pulsa «Siguiente ejercicio».'}</span></p>` : '<p class="muted small">Marca cada serie al terminarla. Empezará el descanso.</p>'}`;
+        ${done >= nSets ? `<p class="sets-done">${icon('check')}<span>¡Ejercicio completado! ${isLast ? 'Pulsa «Finalizar entrenamiento».' : 'Pulsa «Siguiente ejercicio».'}</span></p>` : '<p class="muted small">Marca cada serie al terminarla. Empezará el descanso.</p>'}`;
     };
 
     const nextBtn = () => {
       const cur = WorkoutStore.getActive();
-      const complete = (cur.done[cur.index] || 0) >= g.setsNum;
+      const complete = (cur.done[cur.index] || 0) >= nSets;
       return `<button type="button" class="btn btn-primary btn-lg${complete ? ' btn-pulse' : ''}" data-action="next-exercise" id="next-btn">
         <span>${isLast ? 'Finalizar entrenamiento' : 'Siguiente ejercicio'}</span>${icon(isLast ? 'flag' : 'arrow-right')}</button>`;
     };
@@ -812,10 +1110,10 @@ const Views = (() => {
                 ${Planner.isRecommended(ex.id, item.g) ? `<span class="rec-badge rec-inline">${icon('star')}Recomendado</span>` : ''}</p>
               <h1 class="player-ex" tabindex="-1">${esc(ex.name)}</h1>
               <dl class="rx-row">
-                <div><dt>Series</dt><dd class="mono">${g.setsNum}</dd></div>
+                <div><dt>Series</dt><dd class="mono">${nSets}</dd></div>
                 <div><dt>Repeticiones</dt><dd class="mono">${esc(Planner.repsFor(ex, a.goal))}</dd></div>
                 <div><dt>Esfuerzo</dt><dd class="mono">${esc(g.prescription.rir)}</dd></div>
-                <div><dt>Descanso</dt><dd class="mono">${esc(g.prescription.rest)}</dd></div>
+                <div><dt>Descanso</dt><dd class="mono">${esc(Coach.fmtRest(restSec))}</dd></div>
               </dl>
               <div class="sets" id="sets">${setsBlock()}</div>
               <div class="rest" id="rest" hidden aria-live="polite"></div>
@@ -837,7 +1135,7 @@ const Views = (() => {
     function stopRest() { clearInterval(restTimer); restTimer = null; }
     function startRest(root) {
       stopRest();
-      let left = g.restSec;
+      let left = restSec;
       const box = root.querySelector('#rest');
       const fmt = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
       const draw = () => {
@@ -881,9 +1179,9 @@ const Views = (() => {
           const next = k < done ? k : k + 1;
           WorkoutStore.setDone(cur.index, next);
           const root = document.getElementById('app');
-          if (next > done && next < g.setsNum) startRest(root);
+          if (next > done && next < nSets) startRest(root);
           else { stopRest(); root.querySelector('#rest').hidden = true; }
-          const target = root.querySelector(next >= g.setsNum ? '#next-btn' : `[data-focus="set-${k}"]`);
+          const target = root.querySelector(next >= nSets ? '#next-btn' : `[data-focus="set-${k}"]`);
           if (target) target.focus({ preventScroll: true });
         },
         'skip-rest'() { stopRest(); document.getElementById('rest').hidden = true; },
@@ -918,9 +1216,9 @@ const Views = (() => {
               <div><dt>Series</dt><dd class="mono">${last.sets}</dd></div>
               <div><dt>Minutos</dt><dd class="mono">${last.minutes}</dd></div>
             </dl>
+            ${last.streak ? `<p class="finish-streak">${icon('flame')}<span>Racha: <strong class="mono">${last.streak}</strong> ${last.streak === 1 ? 'entrenamiento seguido' : 'entrenamientos seguidos'}. ¡No la rompas!</span></p>` : ''}
             <div class="btn-row">
-              <a class="btn btn-primary" href="#/plan/frecuencia">Planificar otro día${icon('arrow-right')}</a>
-              <a class="btn btn-secondary" href="#/">${icon('home')}<span>Ir al inicio</span></a>
+              <a class="btn btn-primary" href="#/">${icon('home')}<span>Ir a mi panel</span></a>
             </div>
           </div>
           <section class="nutrition-card" aria-labelledby="nutri-title">
@@ -1176,7 +1474,7 @@ const Views = (() => {
     }));
     items.push({ id: 'mitos', label: 'Ideas erróneas', html: `<div class="myths">${t.myths.map(m => `<div class="myth">
         <p class="myth-claim">${icon('x')}<span>«${esc(m.myth)}»</span></p><p class="myth-reality">${icon('check')}<span>${esc(m.reality)}</span></p></div>`).join('')}</div>` });
-    items.push({ id: 'lecturas', label: 'Lecturas', html: `<ul class="refs">${t.refs.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` });
+    items.push({ id: 'lecturas', label: 'Lecturas', html: `<ul class="refs">${t.refs.map(r => `<li>${typeof r === 'string' ? esc(r) : `<a href="${r.url}" target="_blank" rel="noopener">${esc(r.text)}</a>`}</li>`).join('')}</ul>` });
 
     const html = `
       <section class="step-page">
@@ -1229,7 +1527,8 @@ const Views = (() => {
   function about() {
     const layers = [
       ['Datos', 'data.js · exercises.js · learn.js', 'Métodos, sesiones, ejercicios, recomendados y contenido educativo como objetos de JavaScript.'],
-      ['Lógica', 'workouts.js', 'Planner calcula sesiones, límites y el orden automático de la rutina. WorkoutStore guarda el plan y el entrenamiento en curso en localStorage.'],
+      ['Lógica', 'workouts.js', 'Planner calcula sesiones y el orden automático de la rutina. WorkoutStore guarda el plan, la rutina, el entrenamiento en curso y la racha en localStorage.'],
+      ['Entrenador', 'coach.js', 'Valoración de cada ejercicio, recomendados con estudios, límites de seguridad por sesión y autocompletado.'],
       ['Animaciones', 'animations.js', `Cuerpo transparente en SVG con músculos visibles, cinemática inversa y ${Animations.presets.length} patrones de movimiento.`],
       ['Interfaz', 'ui.js · views.js · app.js', 'Componentes reutilizables, vistas por paso y un enrutador por hash con botón de retroceso.'],
       ['Estilos', 'styles.css · responsive.css', 'Diseño oscuro con variables CSS, adaptado a computador, tablet y teléfono.']
@@ -1243,11 +1542,12 @@ const Views = (() => {
           </div>
           <div class="about-grid">
             <div class="side-box">${UI.tabs('about', [
-              { id: 'porque', label: 'Por qué existe', html: `<p>Mucha información sobre entrenamiento se presenta como reglas absolutas. FIT SPLIT explica el porqué de cada decisión y muestra dónde hay consenso y dónde hay matices.</p><p>La experiencia es un recorrido guiado: defines tu objetivo, eliges método y frecuencia, seleccionas los ejercicios del día y entrenas paso a paso.</p>` },
+              { id: 'porque', label: 'Por qué existe', html: `<p>Mucha información sobre entrenamiento se presenta como reglas absolutas. FIT SPLIT explica el porqué de cada decisión y muestra dónde hay consenso y dónde hay matices.</p><p>La experiencia es un recorrido guiado: defines tu objetivo, eliges método y frecuencia y seleccionas los ejercicios de cada día con un entrenador que controla la fatiga de la sesión. Después tienes tu panel personal para entrenar cualquier día y mantener tu racha.</p>` },
               { id: 'principios', label: 'Principios', html: `<ul class="list-check">
                 <li><strong>Basada en evidencia:</strong> recomendaciones apoyadas en la literatura científica.</li>
                 <li><strong>Sin absolutos:</strong> los rangos son orientativos y se explican los matices.</li>
                 <li><strong>Aprender viendo:</strong> cada ejercicio tiene animación por fases con los músculos visibles.</li>
+                <li><strong>Seguridad ante todo:</strong> el entrenador limita los ejercicios muy exigentes y el volumen por sesión.</li>
                 <li><strong>Lo esencial primero:</strong> sin alimentación y constancia no hay resultados.</li></ul>` },
               { id: 'arquitectura', label: 'Cómo está construido', html: `<p>Aplicación web de una sola página hecha con HTML5, CSS3 y JavaScript moderno, sin backend ni dependencias.</p>
                 <ol class="arch">${layers.map(([n, f, d]) => `<li><strong>${n}</strong><code>${f}</code><span>${d}</span></li>`).join('')}</ol>` }

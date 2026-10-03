@@ -62,7 +62,10 @@ const UI = (() => {
     skip: '<path d="M6 5.5l9 6.5-9 6.5z" fill="currentColor"/><path d="M18 5.5v13"/>',
     exit: '<path d="M14 4.5h5v15h-5"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
     trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6"/>',
-    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'
+    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    coach: '<circle cx="12" cy="7" r="3.5"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M15.5 15.5l1.5 2 2.5-3.5"/>',
+    wand: '<path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M19 3.5v3M17.5 5h3M6 4v2M5 5h2M19 15v2M18 16h2"/>'
   };
 
   const icon = (name, cls = '') =>
@@ -101,31 +104,50 @@ const UI = (() => {
     }).join('')}</div>`;
   }
 
+  /* Motivo corto (para la tarjeta) de un bloqueo del entrenador */
+  const BLOCK_SHORT = {
+    high: 'Ya tienes 2 ejercicios muy exigentes',
+    'session-full': 'Sesión completa para tu objetivo',
+    'group-full': 'Grupo completo',
+    reserve: 'Primero completa los otros grupos',
+    group: 'No disponible'
+  };
+
+  /* Distintivo de exigencia del entrenador */
+  function demandTag(ex) {
+    const d = Coach.rating(ex.id).demand;
+    return `<span class="tag tag-demand demand-${d}" title="${esc(DEMAND_LABELS[d].name)}">${d === 'alta' ? icon('bolt') : ''}${esc(DEMAND_LABELS[d].name)}</span>`;
+  }
+
   /* Tarjeta de ejercicio.
      groupId: grupo en el que se muestra (para el distintivo de recomendado)
-     selectable: muestra el botón Seleccionar */
+     selectable: muestra el botón Seleccionar
+     block: resultado de Coach.check cuando el entrenador no permite elegirlo */
   function exerciseCard(ex, opts = {}) {
-    const { groupId, selected = false, disabled = false, selectable = false, index } = opts;
+    const { groupId, selected = false, block = null, selectable = false, index } = opts;
+    const blocked = !selected && block && !block.ok;
     const tone = groupId ? toneOfGroup(groupId) : toneOfExercise(ex);
     const rec = groupId && Planner.isRecommended(ex.id, groupId);
     return `
-      <article class="ex-card tone-${tone}${selected ? ' is-selected' : ''}${rec ? ' is-rec' : ''}"${index != null ? ` style="--i:${index}"` : ''}>
+      <article class="ex-card tone-${tone}${selected ? ' is-selected' : ''}${rec ? ' is-rec' : ''}${blocked ? ' is-blocked' : ''}"${index != null ? ` style="--i:${index}"` : ''}>
         <button type="button" class="ex-card-media" data-action="open-exercise" data-ex="${ex.id}" tabindex="-1" aria-hidden="true">${Animations.thumbnail(ex)}</button>
         ${rec ? `<span class="rec-badge">${icon('star')}Recomendado</span>` : ''}
         <div class="ex-card-body">
           <div class="ex-card-tags">
             <span class="tag">${ex.category === 'compuesto' ? 'Compuesto' : 'Aislamiento'}</span>
+            ${demandTag(ex)}
             ${difficulty(ex.difficulty)}
           </div>
           <h3 class="ex-card-title">${esc(ex.name)}</h3>
           <p class="ex-card-meta">${esc(ex.primary.join(', '))}</p>
           <p class="ex-card-equip">${icon('dumbbell')}${esc(ex.equipmentLabel)}</p>
+          ${blocked ? `<p class="ex-card-block">${icon('lock')}<span>${esc(BLOCK_SHORT[block.code] || block.reason)}</span></p>` : ''}
         </div>
         <div class="ex-card-actions">
           <button type="button" class="btn btn-ghost btn-sm" data-action="open-exercise" data-ex="${ex.id}" data-focus="view-${ex.id}">${icon('eye')}<span>Ver</span></button>
-          ${selectable ? `<button type="button" class="btn btn-select btn-sm${selected ? ' is-selected' : ''}" data-action="toggle-exercise"
-            data-ex="${ex.id}" data-focus="sel-${ex.id}" aria-pressed="${selected}" ${disabled ? 'disabled' : ''}>
-            ${selected ? icon('check') + '<span>Elegido</span>' : icon('plus') + '<span>Elegir</span>'}</button>` : ''}
+          ${selectable ? `<button type="button" class="btn btn-select btn-sm${selected ? ' is-selected' : ''}${blocked ? ' is-blocked' : ''}" data-action="toggle-exercise"
+            data-ex="${ex.id}" data-focus="sel-${ex.id}" aria-pressed="${selected}"${blocked ? ` aria-disabled="true" title="${esc(block.reason)}"` : ''}>
+            ${selected ? icon('check') + '<span>Elegido</span>' : blocked ? icon('lock') + '<span>Bloqueado</span>' : icon('plus') + '<span>Elegir</span>'}</button>` : ''}
         </div>
       </article>`;
   }
@@ -276,7 +298,7 @@ const UI = (() => {
 
   return {
     esc, icon, goalName, toneOfGroup, toneOfExercise, plural, query, GOAL_ICONS,
-    difficulty, progress, weekStrip, exerciseCard, topicCard, repScale, emptyState,
+    difficulty, progress, weekStrip, exerciseCard, demandTag, topicCard, repScale, emptyState,
     tabs, selectTab, toast, openDialog, confirm
   };
 })();

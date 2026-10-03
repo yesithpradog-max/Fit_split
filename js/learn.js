@@ -266,6 +266,80 @@ const LEARN_TOPICS = [
     ]
   },
   {
+    id: 'seleccion-ejercicios',
+    title: 'Cómo elige los ejercicios el entrenador',
+    shortTitle: 'Elegir ejercicios',
+    icon: 'coach',
+    short: 'Qué dice la investigación sobre los ejercicios más eficaces y por qué FIT SPLIT limita la fatiga de cada sesión.',
+    readTime: 7,
+    lead: 'No todos los ejercicios estimulan igual a un músculo. La investigación reciente apunta a un patrón: los ejercicios que cargan el músculo cuando está estirado suelen dar muy buenos resultados. FIT SPLIT usa esa evidencia para recomendar ejercicios y, además, pone límites para que una sesión no acumule más fatiga de la que puedes recuperar.',
+    sections: [
+      {
+        h: 'La posición estirada importa',
+        p: [
+          'Varios estudios comparan el mismo músculo entrenado en distintas partes del recorrido. Cuando la carga es mayor con el músculo estirado, el crecimiento suele ser igual o mayor que con el músculo acortado. Por eso el entrenador prioriza ejercicios como el curl femoral sentado, las extensiones de tríceps por encima de la cabeza, el curl inclinado o la sentadilla profunda.',
+          'Esto no significa que los demás ejercicios no sirvan: cualquier ejercicio llevado cerca del fallo con buena técnica produce estímulo. Significa que, a igualdad de esfuerzo, algunos rinden más por serie.'
+        ],
+        list: [
+          'Tríceps: la extensión con el brazo por encima de la cabeza produjo alrededor de 1,4 veces más crecimiento que con el brazo abajo.',
+          'Isquiotibiales: el curl sentado (cadera flexionada, músculo más estirado) superó al curl tumbado.',
+          'Gemelos: entrenar la parte baja del recorrido, con el talón por debajo del escalón, dio más crecimiento.',
+          'Glúteos: la sentadilla profunda hizo crecer más el glúteo que la media sentadilla; el hip thrust logró un resultado parecido al de la sentadilla.',
+          'Cuádriceps: en la extensión de piernas, trabajar con la rodilla flexionada (músculo estirado) fue más eficaz.'
+        ]
+      },
+      {
+        h: 'Cómo valora cada ejercicio',
+        defs: [
+          { t: 'Recomendado (estrella)', d: 'Ejercicios con buen respaldo para el grupo muscular: tensión en la posición estirada, recorrido completo y facilidad para progresar.' },
+          { t: 'Exigencia', d: 'Cuánta fatiga general provoca. Un peso muerto o una sentadilla con barra cansan todo el cuerpo; una extensión en polea, casi solo el músculo trabajado.' },
+          { t: 'Valoración', d: 'Una nota interna de 1 a 5 que ordena las opciones de cada grupo. Las más bajas no se prohíben, pero el entrenador te sugiere alternativas.' }
+        ]
+      },
+      {
+        h: 'Los límites del entrenador',
+        p: [
+          'Más ejercicios no es mejor. Los beneficios de añadir series en la misma sesión se reducen a partir de un punto, mientras la fatiga y el riesgo de lesión siguen subiendo. Por eso FIT SPLIT no te deja seleccionar sin control:'
+        ],
+        list: [
+          'Como máximo 2 ejercicios muy exigentes por sesión (por ejemplo, sentadilla y peso muerto rumano). El tercero queda bloqueado.',
+          'Un número máximo de ejercicios por sesión según tu objetivo: 5 para fuerza, 8 para hipertrofia y 9 para resistencia.',
+          'Un máximo de series por músculo y sesión (unas 9, o 12 si la sesión se centra en uno o dos grupos).',
+          'Hueco reservado para los grupos que aún no tienen ejercicios, para que la sesión quede equilibrada.',
+          'Los ejercicios se ordenan solos: compuestos y exigentes primero, cuando estás más fresco.'
+        ]
+      },
+      {
+        h: 'Tu parte del trabajo',
+        p: [
+          'El entrenador reduce los riesgos de la planificación, pero la técnica, el calentamiento y elegir cargas que puedas controlar dependen de ti. Ante dolor o una lesión previa, consulta a un profesional sanitario antes de entrenar.'
+        ]
+      }
+    ],
+    keyPoints: [
+      'Los ejercicios que cargan el músculo estirado suelen rendir más por serie.',
+      'Cualquier ejercicio funciona si te acercas al fallo con buena técnica: la estrella indica los más eficaces.',
+      'Más ejercicios por sesión no es mejor: la fatiga crece más rápido que el beneficio.',
+      'FIT SPLIT limita los ejercicios muy exigentes a 2 por sesión.'
+    ],
+    myths: [
+      { myth: 'Cuantos más ejercicios hagas para un músculo en un día, más crece.', reality: 'Pasadas unas 10–12 series por músculo y sesión, el beneficio extra es pequeño y la fatiga sigue aumentando. Es mejor repartir el volumen en la semana.' },
+      { myth: 'Solo sirven los ejercicios básicos con barra.', reality: 'Las máquinas y las poleas permiten cargar el músculo estirado con seguridad y acercarse al fallo con menos riesgo. Son herramientas, no atajos.' },
+      { myth: 'El “bombeo” al final del recorrido es la señal de un buen ejercicio.', reality: 'La sensación de congestión no predice bien el crecimiento. La tensión en la posición estirada parece más importante.' }
+    ],
+    refs: [
+      { text: 'Maeo, S. et al. (2023). Triceps brachii hypertrophy is substantially greater after elbow extension training performed in the overhead versus neutral arm position.', url: 'https://onlinelibrary.wiley.com/doi/10.1080/17461391.2022.2100279' },
+      { text: 'Maeo, S. et al. (2021). Greater hamstrings muscle hypertrophy but similar damage protection after training at long versus short muscle lengths.', url: 'https://www.researchgate.net/publication/344445943_Greater_Hamstrings_Muscle_Hypertrophy_but_Similar_Damage_Protection_after_Training_at_Long_versus_Short_Muscle_Lengths' },
+      { text: 'Kassiano, W. et al. (2023). Greater gastrocnemius muscle hypertrophy after partial range of motion training performed at long muscle lengths.', url: 'https://www.researchgate.net/publication/365127382_Greater_gastrocnemius_muscle_hypertrophy_after_partial_range_of_motion_training_performed_at_long_muscle_lengths' },
+      { text: 'Lengthened partial repetitions elicit similar muscular adaptations as full range of motion repetitions during resistance training in trained individuals.', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11829627/' },
+      { text: 'Kubo, K. et al. (2019). Effects of squat training with different depths on lower limb muscle volumes (resumen de Stronger by Science).', url: 'https://www.strongerbyscience.com/research-spotlight-squat-depth/' },
+      { text: 'Pedrosa, G. F. et al. (2022). Partial range of motion training elicits favorable improvements in muscular adaptations when carried out at long muscle lengths (resumen de Stronger by Science).', url: 'https://www.strongerbyscience.com/leg-extension-muscle-growth/' },
+      { text: 'Plotkin, D. et al. (2023). Hip thrust and back squat training elicit similar gluteus muscle hypertrophy and transfer similarly to the deadlift.', url: 'https://www.biorxiv.org/content/10.1101/2023.06.21.545949v1' },
+      { text: 'Pedrosa, G. F. et al. (2023). Training in the initial range of motion promotes greater muscle adaptations than at final in the arm curl.', url: 'https://www.mdpi.com/2075-4663/11/2/39' },
+      { text: 'Is there too much of a good thing? Meta-regressions of the effect of per-session volume on hypertrophy and strength (2023).', url: 'https://sportrxiv.org/index.php/server/preprint/view/537' }
+    ]
+  },
+  {
     id: 'volumen',
     title: 'Volumen',
     icon: 'layers',
@@ -475,7 +549,7 @@ const LEARN_TOPICS = [
 ];
 
 /* Temas que aparecen en la portada ("Aprende los fundamentos") */
-const FUNDAMENTALS = ['alimentacion', 'tension-mecanica', 'volumen', 'rir', 'recuperacion', 'sobrecarga-progresiva'];
+const FUNDAMENTALS = ['alimentacion', 'seleccion-ejercicios', 'tension-mecanica', 'rir', 'recuperacion', 'sobrecarga-progresiva'];
 
 /* Contenido de apoyo para los widgets interactivos */
 const INTENSITY_MEANINGS = [

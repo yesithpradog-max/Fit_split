@@ -257,6 +257,199 @@ const EXERCISES = [
     anim: { preset: 'crossover', p: ['chest'], s: ['frontDelt'] }
   },
 
+  {
+    id: 'press-banca-mancuernas',
+    name: 'Press de banca con mancuernas',
+    groups: ['pecho'],
+    primary: ['Pectoral mayor'],
+    secondary: ['Tríceps', 'Deltoides anterior'],
+    movement: 'Empuje horizontal',
+    category: 'compuesto',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas y banco plano',
+    difficulty: 'intermedio',
+    description: 'Press plano con una mancuerna en cada mano. Permite bajar algo más que con barra y que cada lado trabaje por separado, con un estiramiento del pecho mayor en la parte baja.',
+    steps: {
+      prep: 'Siéntate en el banco con las mancuernas sobre los muslos. Túmbate llevándolas al pecho con ayuda de las rodillas y apoya los pies firmes en el suelo.',
+      start: 'Extiende los brazos sobre el pecho con las palmas hacia los pies o ligeramente enfrentadas. Escápulas juntas y hacia abajo.',
+      ecc: 'Baja las mancuernas de forma controlada hacia los lados del pecho, con los codos a unos 45–70° del torso.',
+      turn: 'Detente cuando notes un buen estiramiento del pecho, sin que los hombros se adelanten.',
+      con: 'Empuja hacia arriba y ligeramente hacia dentro siguiendo un arco natural.',
+      end: 'Termina con los brazos extendidos sobre el pecho, sin chocar las mancuernas.'
+    },
+    mistakes: [
+      'Dejar caer las mancuernas en la parte baja y rebotar.',
+      'Abrir los codos a 90° y adelantar los hombros.',
+      'Elegir un peso que no puedes llevar a la posición inicial con seguridad.',
+      'Soltar las mancuernas de golpe al terminar la serie.'
+    ],
+    tips: [
+      'Al acabar, lleva las mancuernas al pecho y apóyalas en los muslos al incorporarte.',
+      'Es una buena alternativa a la barra si no tienes quien te asista.',
+      'Aprovecha el mayor recorrido, pero sin forzar el hombro.'
+    ],
+    goals: ['hipertrofia', 'fuerza', 'resistencia'],
+    reps: { fuerza: '5–8' },
+    tension: {
+      where: 'La demanda sobre el pecho es máxima en la parte baja, con el músculo estirado. Arriba, las mancuernas apenas generan tensión.',
+      cue: 'Controla el estiramiento y empuja desde ahí: no hace falta juntar las mancuernas arriba.'
+    },
+    anim: { preset: 'bench', opts: { equip: 'dumbbell' }, p: ['chest'], s: ['triceps', 'frontDelt'] }
+  },
+  {
+    id: 'press-inclinado-barra',
+    name: 'Press inclinado con barra',
+    groups: ['pecho'],
+    primary: ['Pectoral mayor (porción clavicular)'],
+    secondary: ['Deltoides anterior', 'Tríceps'],
+    movement: 'Empuje inclinado',
+    category: 'compuesto',
+    equipment: ['barra'],
+    equipmentLabel: 'Barra y banco inclinado',
+    difficulty: 'intermedio',
+    description: 'Press con barra en banco inclinado. Da más protagonismo a la parte superior del pecho y permite progresar en carga con facilidad.',
+    steps: {
+      prep: 'Ajusta el banco a unos 30°. Colócate con los ojos casi debajo de la barra y los pies firmes en el suelo.',
+      start: 'Agarra la barra algo más abierta que los hombros, sácala del soporte y colócala sobre la parte alta del pecho.',
+      ecc: 'Baja la barra con control hacia la parte alta del pecho, por debajo de las clavículas.',
+      turn: 'Toca el pecho de forma suave, sin rebotar, manteniendo las escápulas juntas.',
+      con: 'Empuja hacia arriba hasta la línea de los hombros sin despegar la cadera del banco.',
+      end: 'Termina con los brazos extendidos y la barra estable antes de la siguiente repetición.'
+    },
+    mistakes: [
+      'Inclinar el banco más de 45°: el ejercicio se convierte en un press de hombro.',
+      'Bajar la barra hacia el cuello o hacia el abdomen.',
+      'Rebotar en el pecho.',
+      'Entrenar cerca del fallo sin barras de seguridad ni asistencia.'
+    ],
+    tips: [
+      'Entre 15° y 30° de inclinación suele ser suficiente.',
+      'Usa un compañero o un rack con seguros cuando la serie sea exigente.',
+      'Si notas molestias en el hombro, prueba la versión con mancuernas.'
+    ],
+    goals: ['fuerza', 'hipertrofia'],
+    tension: {
+      where: 'La porción superior del pecho trabaja más en la parte baja del recorrido, cuando la barra se acerca al pecho.',
+      cue: 'Baja con control y mantén el pecho alto: la tensión debe estar en el pectoral, no en el rebote.'
+    },
+    anim: { preset: 'bench', opts: { incline: 30, equip: 'barbell' }, p: ['chest'], s: ['frontDelt', 'triceps'] }
+  },
+  {
+    id: 'contractor-pecho',
+    name: 'Contractor de pecho (pec deck)',
+    groups: ['pecho'],
+    primary: ['Pectoral mayor'],
+    secondary: ['Deltoides anterior'],
+    movement: 'Aducción horizontal',
+    category: 'aislamiento',
+    equipment: ['maquina'],
+    equipmentLabel: 'Máquina de contractor',
+    difficulty: 'principiante',
+    description: 'Aislamiento del pecho en máquina. La trayectoria guiada permite acercarse al fallo con seguridad y mantener tensión en la posición estirada.',
+    steps: {
+      prep: 'Ajusta el asiento para que las asas queden a la altura del pecho y el respaldo apoye toda la espalda.',
+      start: 'Agarra las asas con los codos ligeramente flexionados y el pecho alto.',
+      con: 'Junta las asas delante del pecho describiendo un arco, sin mover el torso.',
+      turn: 'Aprieta el pecho un instante con las manos juntas.',
+      ecc: 'Abre los brazos con control hasta notar el estiramiento del pecho.',
+      end: 'Mantén la tensión antes de volver a cerrar; no dejes que el peso descanse.'
+    },
+    mistakes: [
+      'Despegar la espalda del respaldo para mover más peso.',
+      'Abrir demasiado y forzar el hombro en el estiramiento.',
+      'Doblar y estirar los codos durante el movimiento.',
+      'Recortar el recorrido en la apertura.'
+    ],
+    tips: [
+      'Es una de las mejores opciones de aislamiento para el pecho porque guía el recorrido.',
+      'Úsalo después de los press para sumar volumen con menos fatiga.',
+      'Piensa en “abrazar un árbol”: el movimiento sale del hombro, no del codo.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'La máquina mantiene resistencia en todo el arco. La mayor exigencia aparece en la apertura, con el pecho estirado.',
+      cue: 'La fase de apertura debe ser lenta: ahí está el estímulo más valioso.'
+    },
+    anim: { preset: 'pec-deck', p: ['chest'], s: ['frontDelt'] }
+  },
+  {
+    id: 'flexiones',
+    name: 'Flexiones',
+    groups: ['pecho'],
+    primary: ['Pectoral mayor'],
+    secondary: ['Tríceps', 'Deltoides anterior', 'Abdomen'],
+    movement: 'Empuje horizontal',
+    category: 'compuesto',
+    equipment: ['peso-corporal'],
+    equipmentLabel: 'Peso corporal',
+    difficulty: 'principiante',
+    description: 'Empuje horizontal con el propio cuerpo. No necesita material y se puede progresar elevando los pies, añadiendo pausas o lastre.',
+    steps: {
+      prep: 'Apoya las manos algo más abiertas que los hombros y los pies juntos o ligeramente separados.',
+      start: 'Extiende los brazos y forma una línea recta de la cabeza a los talones, con abdomen y glúteos activos.',
+      ecc: 'Baja el cuerpo en bloque, con los codos a unos 45° del torso.',
+      turn: 'Llega con el pecho cerca del suelo sin que la cadera se hunda.',
+      con: 'Empuja el suelo hasta extender los brazos, manteniendo el cuerpo recto.',
+      end: 'Termina arriba con los hombros sobre las manos y repite.'
+    },
+    mistakes: [
+      'Dejar caer la cadera o elevarla demasiado.',
+      'Hacer medias repeticiones sin bajar el pecho.',
+      'Abrir los codos en cruz.',
+      'Adelantar la cabeza hacia el suelo.'
+    ],
+    tips: [
+      'Si aún no puedes hacer buenas repeticiones, apoya las manos en un banco elevado.',
+      'Cuando superes con facilidad las 20 repeticiones, añade lastre o eleva los pies.',
+      'Útil para el objetivo de resistencia muscular y para entrenar fuera del gimnasio.'
+    ],
+    goals: ['resistencia', 'hipertrofia'],
+    reps: { fuerza: '5–8 con lastre', hipertrofia: '8–20', resistencia: '15–30' },
+    tension: {
+      where: 'La mayor demanda sobre el pecho aparece abajo, con el pecho cerca del suelo y el músculo estirado.',
+      cue: 'Baja despacio y no te quedes a medio camino: la parte baja es la que más cuenta.'
+    },
+    anim: { preset: 'pushup', p: ['chest'], s: ['triceps', 'frontDelt', 'abs'] }
+  },
+  {
+    id: 'cruce-poleas-bajo',
+    name: 'Cruce de poleas de abajo hacia arriba',
+    groups: ['pecho'],
+    primary: ['Pectoral mayor (porción clavicular)'],
+    secondary: ['Deltoides anterior'],
+    movement: 'Aducción horizontal ascendente',
+    category: 'aislamiento',
+    equipment: ['polea'],
+    equipmentLabel: 'Poleas bajas',
+    difficulty: 'principiante',
+    description: 'Variante del cruce de poleas con el cable desde abajo. El arco ascendente enfatiza la parte superior del pecho.',
+    steps: {
+      prep: 'Coloca las poleas en la posición más baja y agarra un estribo en cada mano.',
+      start: 'Da un paso al frente, con los brazos abajo y algo por detrás del cuerpo y los codos ligeramente flexionados.',
+      con: 'Sube las manos en arco hacia delante hasta la altura de la parte alta del pecho.',
+      turn: 'Junta las manos un instante sin perder la postura.',
+      ecc: 'Baja con control siguiendo el mismo arco hasta notar el estiramiento.',
+      end: 'Mantén la tensión del cable antes de la siguiente repetición.'
+    },
+    mistakes: [
+      'Convertir el movimiento en un curl doblando los codos.',
+      'Subir las manos por encima de la cabeza.',
+      'Encoger los hombros al final.',
+      'Usar demasiado peso y perder el arco.'
+    ],
+    tips: [
+      'Buen complemento de un press inclinado.',
+      'Mantén el pecho alto durante toda la serie.',
+      'Las poleas permiten tensión constante: aprovecha cada parte del recorrido.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'El cable mantiene la tensión en todo el arco; la posición estirada, con las manos abajo y atrás, es la más exigente.',
+      cue: 'Controla la bajada y no dejes que el cable te arrastre los brazos hacia atrás.'
+    },
+    anim: { preset: 'crossover', opts: { low: true }, p: ['chest'], s: ['frontDelt'] }
+  },
+
   /* ============================ ESPALDA ============================ */
   {
     id: 'dominadas',
@@ -488,6 +681,200 @@ const EXERCISES = [
     anim: { preset: 'pullover', p: ['lats'], s: ['triceps', 'upperBack'] }
   },
 
+  {
+    id: 'dominadas-supinas',
+    name: 'Dominadas supinas (chin-up)',
+    groups: ['espalda'],
+    primary: ['Dorsal ancho', 'Bíceps'],
+    secondary: ['Redondo mayor', 'Trapecio medio e inferior', 'Antebrazo'],
+    movement: 'Tirón vertical',
+    category: 'compuesto',
+    equipment: ['peso-corporal'],
+    equipmentLabel: 'Barra de dominadas',
+    difficulty: 'intermedio',
+    description: 'Dominada con las palmas hacia ti. El bíceps participa más que en la dominada prona, por lo que suele permitir más repeticiones.',
+    steps: {
+      prep: 'Agarra la barra con las palmas hacia ti, a la anchura de los hombros.',
+      start: 'Cuelga con los brazos extendidos, el pecho alto y las piernas quietas.',
+      con: 'Lleva los codos hacia abajo y hacia las costillas hasta que la barbilla supere la barra.',
+      turn: 'Mantén un instante arriba con el pecho cerca de la barra.',
+      ecc: 'Baja con control hasta extender los brazos por completo.',
+      end: 'Empieza la siguiente repetición desde el estiramiento, sin balanceo.'
+    },
+    mistakes: [
+      'Balancear las piernas para impulsarse.',
+      'No extender los brazos abajo.',
+      'Estirar el cuello para pasar la barbilla.',
+      'Dejarse caer en la bajada.'
+    ],
+    tips: [
+      'Si aún no completas repeticiones, usa una banda elástica o haz solo la bajada lenta.',
+      'Cuando superes 12 repeticiones limpias, añade lastre.',
+      'Combínala con un remo para cubrir la espalda media.'
+    ],
+    goals: ['fuerza', 'hipertrofia', 'resistencia'],
+    reps: { fuerza: '3–6 con lastre', hipertrofia: '6–12', resistencia: '10–20 con ayuda si hace falta' },
+    tension: {
+      where: 'El dorsal recibe la mayor exigencia colgado y en la primera parte del tirón, con el músculo estirado.',
+      cue: 'Baja hasta el final: la posición colgada forma parte del estímulo.'
+    },
+    anim: { preset: 'pullup', p: ['lats', 'biceps'], s: ['upperBack', 'forearm'] }
+  },
+  {
+    id: 'jalon-neutro',
+    name: 'Jalón con agarre neutro',
+    groups: ['espalda'],
+    primary: ['Dorsal ancho'],
+    secondary: ['Bíceps', 'Braquial', 'Redondo mayor'],
+    movement: 'Tirón vertical',
+    category: 'compuesto',
+    equipment: ['polea'],
+    equipmentLabel: 'Polea alta con agarre neutro (en V)',
+    difficulty: 'principiante',
+    description: 'Jalón con las palmas enfrentadas. Es una posición cómoda para el hombro que permite un recorrido amplio y un buen estiramiento del dorsal.',
+    steps: {
+      prep: 'Coloca el agarre en V o el agarre neutro ancho y ajusta el rodillo sobre los muslos.',
+      start: 'Siéntate con los brazos estirados arriba y el torso ligeramente inclinado hacia atrás.',
+      con: 'Tira llevando los codos hacia las caderas hasta que el agarre llegue a la parte alta del pecho.',
+      turn: 'Aprieta la espalda un instante sin encoger los hombros.',
+      ecc: 'Sube con control hasta estirar los brazos y notar el dorsal estirado.',
+      end: 'Mantén el pecho alto y repite sin balancear el torso.'
+    },
+    mistakes: [
+      'Echar el torso muy atrás para ayudarse.',
+      'Recortar la subida y perder el estiramiento.',
+      'Tirar solo con los brazos.',
+      'Encoger los hombros hacia las orejas.'
+    ],
+    tips: [
+      'Excelente alternativa a la dominada si aún no dominas tu peso corporal.',
+      'Piensa en llevar los codos a los bolsillos.',
+      'Permite ajustar la carga de forma muy precisa.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    tension: {
+      where: 'La polea mantiene tensión constante. El dorsal trabaja más estirado, con los brazos arriba.',
+      cue: 'Deja que la polea suba tus brazos del todo, con control, antes de cada tirón.'
+    },
+    anim: { preset: 'pulldown', p: ['lats'], s: ['biceps', 'upperBack'] }
+  },
+  {
+    id: 'remo-polea-sentado',
+    name: 'Remo sentado en polea',
+    groups: ['espalda'],
+    primary: ['Dorsal ancho', 'Trapecio medio', 'Romboides'],
+    secondary: ['Bíceps', 'Deltoides posterior', 'Erectores'],
+    movement: 'Tirón horizontal',
+    category: 'compuesto',
+    equipment: ['polea'],
+    equipmentLabel: 'Polea baja con agarre en V',
+    difficulty: 'principiante',
+    description: 'Remo horizontal en polea baja. La tensión constante del cable y la posibilidad de estirar hacia delante lo hacen muy completo para la espalda.',
+    steps: {
+      prep: 'Siéntate con los pies en la plataforma y las rodillas algo flexionadas. Agarra el triángulo.',
+      start: 'Brazos extendidos al frente, con la espalda recta y ligeramente inclinada hacia delante.',
+      con: 'Tira del agarre hacia el abdomen llevando los codos atrás y el torso vertical.',
+      turn: 'Junta las escápulas un instante con el pecho alto.',
+      ecc: 'Extiende los brazos con control dejando que los hombros se adelanten un poco para estirar.',
+      end: 'Mantén la espalda neutra y repite.'
+    },
+    mistakes: [
+      'Balancear el torso como si fuera un remo de barca.',
+      'Redondear la zona lumbar al estirar.',
+      'Tirar hacia el pecho con los codos muy abiertos (cambia el objetivo a la parte alta).',
+      'No completar la extensión de los brazos.'
+    ],
+    tips: [
+      'Una ligera inclinación del torso es normal; un balanceo grande, no.',
+      'Cambiar el agarre (ancho o estrecho) modifica la zona de la espalda que más trabaja.',
+      'Útil para acumular volumen de espalda con poca fatiga lumbar.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    tension: {
+      where: 'El cable mantiene tensión en todo el recorrido; la posición adelantada estira el dorsal y la espalda media.',
+      cue: 'Cada repetición empieza con un estiramiento controlado, no con un tirón brusco.'
+    },
+    anim: { preset: 'row-seated', opts: { cable: true }, p: ['lats', 'upperBack'], s: ['biceps', 'rearDelt', 'lowerBack'] }
+  },
+  {
+    id: 'remo-pecho-apoyado',
+    name: 'Remo con pecho apoyado',
+    groups: ['espalda'],
+    primary: ['Dorsal ancho', 'Trapecio medio', 'Romboides'],
+    secondary: ['Bíceps', 'Deltoides posterior'],
+    movement: 'Tirón horizontal',
+    category: 'compuesto',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas y banco inclinado',
+    difficulty: 'principiante',
+    description: 'Remo tumbado boca abajo en un banco inclinado. El apoyo del pecho elimina el balanceo y la carga sobre la zona lumbar: toda la exigencia recae en la espalda.',
+    steps: {
+      prep: 'Ajusta el banco a 30–45° y túmbate boca abajo con el pecho apoyado en la parte alta.',
+      start: 'Deja colgar las mancuernas con los brazos estirados y los hombros relajados hacia delante.',
+      con: 'Tira de las mancuernas llevando los codos hacia atrás y hacia la cadera.',
+      turn: 'Junta las escápulas un instante sin despegar el pecho del banco.',
+      ecc: 'Baja con control hasta estirar los brazos y notar el estiramiento de la espalda.',
+      end: 'Mantén el pecho apoyado y repite.'
+    },
+    mistakes: [
+      'Despegar el pecho del banco para impulsar el peso.',
+      'Encoger los hombros hacia las orejas.',
+      'Recortar la bajada.',
+      'Girar las muñecas y tirar con los bíceps.'
+    ],
+    tips: [
+      'Muy recomendable si tienes molestias lumbares o vienes de entrenar piernas pesado.',
+      'Permite acercarse al fallo con buena técnica.',
+      'También existe en máquina (T-bar con apoyo): el principio es el mismo.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    tension: {
+      where: 'La espalda trabaja en todo el recorrido; el estiramiento abajo y la contracción con los codos atrás son los puntos clave.',
+      cue: 'Sin balanceo posible, cada repetición depende solo de tu espalda: controla las dos fases.'
+    },
+    anim: { preset: 'row-barbell', opts: { support: true }, p: ['lats', 'upperBack'], s: ['biceps', 'rearDelt'] }
+  },
+  {
+    id: 'peso-muerto',
+    name: 'Peso muerto convencional',
+    groups: ['espalda', 'isquiotibiales', 'gluteos'],
+    primary: ['Glúteo mayor', 'Isquiotibiales', 'Erectores de la columna'],
+    secondary: ['Cuádriceps', 'Trapecio', 'Dorsal ancho', 'Antebrazo'],
+    movement: 'Bisagra de cadera desde el suelo',
+    category: 'compuesto',
+    equipment: ['barra'],
+    equipmentLabel: 'Barra olímpica y discos',
+    difficulty: 'avanzado',
+    description: 'Levantamiento de la barra desde el suelo. Es uno de los ejercicios con más carga posible y más fatiga general: muy útil para la fuerza, pero exige técnica sólida y una dosis prudente.',
+    steps: {
+      prep: 'Coloca los pies a la anchura de la cadera con la barra sobre la mitad del pie.',
+      start: 'Agarra la barra justo por fuera de las piernas, baja la cadera, pon la espalda neutra y tensa los dorsales.',
+      con: 'Empuja el suelo con las piernas y extiende cadera y rodillas a la vez, con la barra pegada al cuerpo.',
+      turn: 'Termina de pie con la cadera extendida, sin echar el torso hacia atrás.',
+      ecc: 'Baja llevando la cadera atrás y, cuando la barra pase las rodillas, flexiónalas hasta el suelo.',
+      end: 'Apoya la barra, recoloca la espalda y repite desde parado.'
+    },
+    mistakes: [
+      'Redondear la zona lumbar al tirar.',
+      'Alejar la barra del cuerpo.',
+      'Subir la cadera antes que los hombros.',
+      'Hiperextender la espalda al final.',
+      'Encadenar repeticiones con rebote sobre los discos.'
+    ],
+    tips: [
+      'Es muy exigente para el cuerpo: el entrenador lo limita a un ejercicio exigente por sesión junto a otros pesados.',
+      'Si tu objetivo es hipertrofia, el peso muerto rumano suele dar más estímulo por unidad de fatiga.',
+      'Pide supervisión cualificada antes de usar cargas altas.'
+    ],
+    goals: ['fuerza'],
+    reps: { fuerza: '2–5', hipertrofia: '5–8', resistencia: 'No recomendado' },
+    tension: {
+      where: 'La demanda es mayor al despegar la barra del suelo, con la cadera flexionada y los isquiotibiales y glúteos estirados.',
+      cue: 'Antes de tirar, elimina la holgura: brazos largos, espalda tensa y la barra pegada a las piernas.'
+    },
+    anim: { preset: 'deadlift', p: ['glutes', 'hams', 'lowerBack'], s: ['quads', 'upperBack', 'lats', 'forearm'] }
+  },
+
   /* ============================ HOMBROS ============================ */
   {
     id: 'press-militar',
@@ -683,6 +1070,122 @@ const EXERCISES = [
     anim: { preset: 'rear-raise', p: ['rearDelt'], s: ['upperBack'] }
   },
 
+  {
+    id: 'elevaciones-laterales-polea',
+    name: 'Elevaciones laterales en polea',
+    groups: ['hombros'],
+    primary: ['Deltoides lateral'],
+    secondary: ['Trapecio superior', 'Supraespinoso'],
+    movement: 'Abducción de hombro',
+    category: 'aislamiento',
+    equipment: ['polea'],
+    equipmentLabel: 'Polea baja con estribo',
+    difficulty: 'principiante',
+    description: 'Elevación lateral a un brazo con polea baja. El cable mantiene tensión desde el principio del recorrido, justo donde la mancuerna apenas carga el deltoides.',
+    steps: {
+      prep: 'Ponte de lado a una polea baja y agarra el estribo con la mano más alejada.',
+      start: 'El brazo empieza por delante del cuerpo, cruzado ligeramente, con el codo un poco flexionado.',
+      con: 'Eleva el brazo hacia el lado hasta la altura del hombro, guiando con el codo.',
+      turn: 'Mantén un instante arriba sin encoger el hombro.',
+      ecc: 'Baja con control hasta cruzar ligeramente por delante del cuerpo.',
+      end: 'Completa todas las repeticiones y cambia de brazo.'
+    },
+    mistakes: [
+      'Inclinar el torso para ayudar a subir.',
+      'Subir la mano por encima del codo.',
+      'Encoger el hombro hacia la oreja.',
+      'Usar demasiado peso y acortar el recorrido.'
+    ],
+    tips: [
+      'Agárrate al soporte con la otra mano para estabilizarte.',
+      'Puedes alternarla con las elevaciones con mancuernas a lo largo de la semana.',
+      'El deltoides lateral responde bien a rangos altos de repeticiones.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '8–12', hipertrofia: '10–20', resistencia: '15–25' },
+    tension: {
+      where: 'El cable carga el deltoides también abajo, en la posición más estirada, donde la mancuerna no genera casi resistencia.',
+      cue: 'Empieza cada repetición desde el cruce y sube sin impulso.'
+    },
+    anim: { preset: 'lateral-raise', opts: { cable: true }, p: ['sideDelt'], s: ['upperBack'] }
+  },
+  {
+    id: 'press-hombro-maquina',
+    name: 'Press de hombro en máquina',
+    groups: ['hombros'],
+    primary: ['Deltoides anterior', 'Deltoides lateral'],
+    secondary: ['Tríceps'],
+    movement: 'Empuje vertical',
+    category: 'compuesto',
+    equipment: ['maquina'],
+    equipmentLabel: 'Máquina de press de hombro',
+    difficulty: 'principiante',
+    description: 'Empuje vertical guiado. Requiere menos estabilidad que la barra o las mancuernas, lo que permite concentrar el esfuerzo en el hombro y acercarse al fallo con seguridad.',
+    steps: {
+      prep: 'Ajusta el asiento para que las asas queden a la altura de los hombros.',
+      start: 'Apoya la espalda y agarra las asas con las muñecas rectas debajo de los codos.',
+      con: 'Empuja hacia arriba hasta casi extender los codos.',
+      turn: 'Mantén un instante arriba sin bloquear de golpe.',
+      ecc: 'Baja con control hasta la altura de las orejas o algo más abajo.',
+      end: 'Repite sin que el peso descanse en la pila.'
+    },
+    mistakes: [
+      'Despegar la espalda del respaldo.',
+      'Asiento demasiado alto: el recorrido se queda corto.',
+      'Bloquear los codos con un golpe arriba.',
+      'Dejar caer el peso.'
+    ],
+    tips: [
+      'Buena opción para principiantes o como segundo empuje vertical.',
+      'Mantén el pecho alto y los abdominales activos.',
+      'Permite progresar con incrementos pequeños.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    tension: {
+      where: 'La mayor exigencia aparece en la parte baja, con las asas a la altura de los hombros.',
+      cue: 'Baja hasta abajo con control: es la parte del recorrido que más estimula.'
+    },
+    anim: { preset: 'overhead', opts: { seated: true, machine: true }, p: ['frontDelt', 'sideDelt'], s: ['triceps'] }
+  },
+  {
+    id: 'elevaciones-frontales',
+    name: 'Elevaciones frontales',
+    groups: ['hombros'],
+    primary: ['Deltoides anterior'],
+    secondary: ['Pectoral (porción clavicular)'],
+    movement: 'Flexión de hombro',
+    category: 'aislamiento',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas',
+    difficulty: 'principiante',
+    description: 'Aislamiento del deltoides anterior. Ojo: este músculo ya trabaja mucho en todos los press, así que en la mayoría de rutinas es un ejercicio prescindible.',
+    steps: {
+      prep: 'De pie, con una mancuerna en cada mano delante de los muslos.',
+      start: 'Brazos casi extendidos, abdomen firme y hombros abajo.',
+      con: 'Eleva un brazo (o ambos) al frente hasta la altura de los hombros.',
+      turn: 'Mantén un instante sin balancear el torso.',
+      ecc: 'Baja con control hasta los muslos.',
+      end: 'Repite alternando o con ambos brazos.'
+    },
+    mistakes: [
+      'Balancear el cuerpo para subir el peso.',
+      'Subir por encima de la cabeza sin necesidad.',
+      'Arquear la espalda.',
+      'Añadirlo a una rutina que ya tiene mucho press.'
+    ],
+    tips: [
+      'El entrenador lo recomienda solo si no haces press de hombro ni de banca.',
+      'Mejor invertir esas series en el deltoides lateral o el posterior.',
+      'Cargas ligeras y técnica estricta.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'La mayor resistencia aparece cerca de la horizontal, cuando el brazo está paralelo al suelo.',
+      cue: 'Sube sin impulso y no pases de la altura de los hombros.'
+    },
+    anim: { preset: 'front-raise', p: ['frontDelt'], s: ['chest'] }
+  },
+
   /* ======================= DELTOIDES POSTERIORES ======================= */
   {
     id: 'face-pull',
@@ -761,6 +1264,85 @@ const EXERCISES = [
       cue: 'Piensa en llevar las manos lejos, hacia las paredes laterales.'
     },
     anim: { preset: 'reverse-fly', p: ['rearDelt'], s: ['upperBack'] }
+  },
+
+  {
+    id: 'pajaro-polea',
+    name: 'Pájaro en polea (cruce invertido)',
+    groups: ['deltoides-posteriores'],
+    primary: ['Deltoides posterior'],
+    secondary: ['Romboides', 'Trapecio medio'],
+    movement: 'Abducción horizontal',
+    category: 'aislamiento',
+    equipment: ['polea'],
+    equipmentLabel: 'Dos poleas a la altura de los hombros',
+    difficulty: 'intermedio',
+    description: 'Apertura posterior con dos poleas cruzadas. El cable mantiene la tensión en todo el arco, también cuando los brazos están cruzados delante (posición estirada).',
+    steps: {
+      prep: 'Coloca las poleas a la altura de los hombros. Agarra el cable izquierdo con la mano derecha y viceversa.',
+      start: 'Brazos cruzados al frente, con los codos casi extendidos.',
+      con: 'Abre los brazos hacia atrás en arco, hasta que queden en línea con el torso.',
+      turn: 'Mantén un instante sin juntar las escápulas en exceso.',
+      ecc: 'Vuelve con control hasta cruzar los brazos.',
+      end: 'Mantén la tensión y repite.'
+    },
+    mistakes: [
+      'Convertirlo en un remo flexionando los codos.',
+      'Echar el torso hacia atrás.',
+      'Encoger los hombros.',
+      'Usar demasiado peso.'
+    ],
+    tips: [
+      'Piensa en llevar las manos lejos, hacia las paredes.',
+      'El deltoides posterior responde bien a repeticiones altas.',
+      'Si no tienes dos poleas, usa la máquina de pájaro.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '8–12', hipertrofia: '10–20', resistencia: '15–25' },
+    tension: {
+      where: 'Con los brazos cruzados el deltoides posterior está estirado y el cable ya lo carga.',
+      cue: 'No te saltes el cruce: es la parte del recorrido que la mancuerna no cubre.'
+    },
+    anim: { preset: 'reverse-fly', opts: { cable: true }, p: ['rearDelt'], s: ['upperBack'] }
+  },
+  {
+    id: 'elevacion-posterior-inclinado',
+    name: 'Elevaciones posteriores en banco inclinado',
+    groups: ['deltoides-posteriores'],
+    primary: ['Deltoides posterior'],
+    secondary: ['Trapecio medio', 'Romboides'],
+    movement: 'Abducción horizontal',
+    category: 'aislamiento',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas y banco inclinado',
+    difficulty: 'principiante',
+    description: 'Elevaciones posteriores tumbado boca abajo en un banco inclinado. El apoyo del pecho evita el balanceo y la carga lumbar.',
+    steps: {
+      prep: 'Ajusta el banco a unos 30° y túmbate boca abajo con una mancuerna en cada mano.',
+      start: 'Deja colgar los brazos con los codos ligeramente flexionados.',
+      con: 'Abre los brazos hacia los lados hasta la línea de los hombros.',
+      turn: 'Mantén un instante arriba.',
+      ecc: 'Baja con control hasta colgar los brazos.',
+      end: 'Repite sin despegar el pecho del banco.'
+    },
+    mistakes: [
+      'Despegar el pecho para impulsar.',
+      'Juntar las escápulas en exceso (pasa el trabajo a la espalda media).',
+      'Flexionar mucho los codos.',
+      'Pesos demasiado altos.'
+    ],
+    tips: [
+      'Una alternativa sencilla si no hay poleas ni máquina.',
+      'Mueve el brazo como un ala, sin tirar hacia atrás.',
+      'Pesos ligeros y control.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '8–12', hipertrofia: '10–20', resistencia: '15–25' },
+    tension: {
+      where: 'La tensión es máxima con los brazos cerca de la horizontal.',
+      cue: 'Haz una pausa breve arriba y baja despacio.'
+    },
+    anim: { preset: 'rear-raise', opts: { bench: true }, p: ['rearDelt'], s: ['upperBack'] }
   },
 
   /* ============================ BÍCEPS ============================ */
@@ -955,6 +1537,121 @@ const EXERCISES = [
     anim: { preset: 'curl', opts: { equip: 'cable' }, p: ['biceps'], s: ['forearm'] }
   },
 
+  {
+    id: 'curl-predicador',
+    name: 'Curl en banco Scott (predicador)',
+    groups: ['biceps'],
+    primary: ['Bíceps braquial', 'Braquial'],
+    secondary: ['Braquiorradial'],
+    movement: 'Flexión de codo',
+    category: 'aislamiento',
+    equipment: ['barra', 'maquina'],
+    equipmentLabel: 'Banco Scott con barra Z o máquina',
+    difficulty: 'principiante',
+    description: 'Curl con el brazo apoyado en un banco inclinado. El apoyo elimina el balanceo y la máxima exigencia aparece con el codo extendido, donde el bíceps está más estirado.',
+    steps: {
+      prep: 'Ajusta el asiento para que la axila quede cerca del borde superior del banco.',
+      start: 'Apoya la parte posterior de los brazos y agarra la barra con los codos casi extendidos.',
+      con: 'Flexiona los codos y sube la barra sin despegar los brazos del apoyo.',
+      turn: 'Aprieta un instante arriba sin llevar la barra hasta los hombros.',
+      ecc: 'Baja lento hasta casi extender los codos.',
+      end: 'Empieza la siguiente repetición desde abajo, sin rebote.'
+    },
+    mistakes: [
+      'Dejar caer la barra abajo y rebotar con el codo bloqueado.',
+      'Despegar los brazos del banco.',
+      'Recortar la parte baja (la más valiosa).',
+      'Levantar los hombros para subir el peso.'
+    ],
+    tips: [
+      'La investigación encuentra un estímulo notable en la parte baja de este curl: no la recortes.',
+      'Usa un peso que puedas controlar con el brazo estirado.',
+      'La barra Z suele ser más cómoda para las muñecas.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'La resistencia es máxima con el codo casi extendido, cuando el bíceps está estirado.',
+      cue: 'La bajada es lenta y llega hasta abajo; arriba la tensión casi desaparece.'
+    },
+    anim: { preset: 'curl', opts: { preacher: true }, p: ['biceps'], s: ['forearm'] }
+  },
+  {
+    id: 'curl-bayesiano',
+    name: 'Curl bayesiano en polea',
+    groups: ['biceps'],
+    primary: ['Bíceps braquial (cabeza larga)'],
+    secondary: ['Braquial', 'Antebrazo'],
+    movement: 'Flexión de codo con hombro en extensión',
+    category: 'aislamiento',
+    equipment: ['polea'],
+    equipmentLabel: 'Polea baja con estribo',
+    difficulty: 'intermedio',
+    description: 'Curl a un brazo de espaldas a la polea, con el brazo por detrás del cuerpo. El hombro en extensión estira la cabeza larga del bíceps y el cable la carga justo ahí.',
+    steps: {
+      prep: 'Coloca la polea baja o media, ponte de espaldas y agarra el estribo. Da un paso al frente.',
+      start: 'Deja que el brazo quede por detrás del torso, con el codo extendido.',
+      con: 'Flexiona el codo sin adelantar el brazo.',
+      turn: 'Aprieta el bíceps con la mano cerca del hombro.',
+      ecc: 'Extiende el codo lentamente hasta notar el estiramiento.',
+      end: 'Completa las repeticiones y cambia de brazo.'
+    },
+    mistakes: [
+      'Adelantar el codo al subir.',
+      'Inclinar el torso hacia delante para compensar.',
+      'Peso excesivo que impide estirar el brazo.',
+      'Bajar de golpe.'
+    ],
+    tips: [
+      'Una de las mejores variantes para trabajar el bíceps en posición estirada.',
+      'El codo se queda quieto atrás durante todo el movimiento.',
+      'Combínalo con un curl con barra para cubrir todo el recorrido.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'El cable carga el bíceps al máximo con el brazo estirado por detrás del cuerpo, su posición más larga.',
+      cue: 'Deja que el cable estire el brazo atrás antes de cada repetición.'
+    },
+    anim: { preset: 'curl', opts: { bayesian: true }, p: ['biceps'], s: ['forearm'] }
+  },
+  {
+    id: 'curl-concentrado',
+    name: 'Curl concentrado',
+    groups: ['biceps'],
+    primary: ['Bíceps braquial'],
+    secondary: ['Braquial'],
+    movement: 'Flexión de codo',
+    category: 'aislamiento',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuerna y banco',
+    difficulty: 'principiante',
+    description: 'Curl sentado con el codo apoyado en el interior del muslo. Fácil de aprender y muy estricto, pero el estiramiento del bíceps es menor que en el curl inclinado o el bayesiano.',
+    steps: {
+      prep: 'Siéntate en un banco con las piernas separadas y una mancuerna en una mano.',
+      start: 'Apoya la parte posterior del brazo en el interior del muslo, con el codo extendido.',
+      con: 'Flexiona el codo y sube la mancuerna hacia el hombro.',
+      turn: 'Aprieta un instante arriba.',
+      ecc: 'Baja con control hasta extender el brazo.',
+      end: 'Completa la serie y cambia de brazo.'
+    },
+    mistakes: [
+      'Mover el hombro para subir.',
+      'Recortar la extensión abajo.',
+      'Girar el torso para ayudarse.',
+      'Usar demasiado peso.'
+    ],
+    tips: [
+      'Útil como último ejercicio de bíceps del día.',
+      'Gira ligeramente la palma hacia fuera al subir.',
+      'Mira el músculo: ayuda a mantener la técnica estricta.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'La resistencia es mayor con el antebrazo horizontal, a mitad del recorrido.',
+      cue: 'Sube y baja sin pausas largas arriba.'
+    },
+    anim: { preset: 'curl', opts: { concentration: true }, p: ['biceps'], s: ['forearm'] }
+  },
+
   /* ============================ TRÍCEPS ============================ */
   {
     id: 'extension-triceps-polea',
@@ -1107,6 +1804,83 @@ const EXERCISES = [
       cue: 'Codos pegados al cuerpo para dirigir el trabajo hacia el tríceps.'
     },
     anim: { preset: 'bench', opts: { equip: 'barbell', close: true }, p: ['triceps'], s: ['chest', 'frontDelt'] }
+  },
+
+  {
+    id: 'extension-polea-sobre-cabeza',
+    name: 'Extensión de tríceps en polea sobre la cabeza',
+    groups: ['triceps'],
+    primary: ['Tríceps (cabeza larga)'],
+    secondary: ['Tríceps (cabezas lateral y medial)'],
+    movement: 'Extensión de codo con brazo elevado',
+    category: 'aislamiento',
+    equipment: ['polea'],
+    equipmentLabel: 'Polea con cuerda',
+    difficulty: 'principiante',
+    description: 'Extensión de codos de espaldas a la polea con los brazos por encima de la cabeza. Con el brazo elevado, la cabeza larga del tríceps trabaja estirada.',
+    steps: {
+      prep: 'Coloca la cuerda en la polea, agárrala y date la vuelta dando un paso al frente.',
+      start: 'Inclina un poco el torso y lleva los brazos junto a la cabeza con los codos extendidos.',
+      ecc: 'Flexiona los codos y deja que las manos vayan detrás de la cabeza.',
+      turn: 'Nota el estiramiento del tríceps sin abrir los codos en exceso.',
+      con: 'Extiende los codos hacia delante y arriba hasta estirar los brazos.',
+      end: 'Mantén los codos en su sitio y repite.'
+    },
+    mistakes: [
+      'Mover los hombros en lugar de los codos.',
+      'Arquear la zona lumbar.',
+      'Recortar el estiramiento.',
+      'Abrir mucho los codos.'
+    ],
+    tips: [
+      'Un estudio encontró aproximadamente un 40% más de crecimiento del tríceps con extensiones sobre la cabeza que con extensiones con el brazo abajo.',
+      'La polea mantiene tensión constante y es cómoda para los codos.',
+      'Postura en tijera (un pie adelantado) para estabilizarte.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    tension: {
+      where: 'La cabeza larga recibe la mayor exigencia con los codos flexionados detrás de la cabeza.',
+      cue: 'Baja hasta el estiramiento con control y extiende sin balancear el torso.'
+    },
+    anim: { preset: 'overhead-ext', opts: { cable: true }, p: ['triceps'], s: [] }
+  },
+  {
+    id: 'patada-triceps',
+    name: 'Patada de tríceps',
+    groups: ['triceps'],
+    primary: ['Tríceps (cabezas lateral y medial)'],
+    secondary: [],
+    movement: 'Extensión de codo',
+    category: 'aislamiento',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuerna y banco',
+    difficulty: 'principiante',
+    description: 'Extensión de codo con el brazo pegado al torso inclinado. Es sencilla, pero la mancuerna solo carga el tríceps al final del recorrido, con el músculo acortado.',
+    steps: {
+      prep: 'Apoya una rodilla y una mano en el banco, con la espalda paralela al suelo.',
+      start: 'Lleva el brazo pegado al costado con el codo flexionado a 90°.',
+      con: 'Extiende el codo hasta que el brazo quede recto hacia atrás.',
+      turn: 'Mantén un instante con el tríceps contraído.',
+      ecc: 'Vuelve con control a 90°.',
+      end: 'Completa la serie y cambia de brazo.'
+    },
+    mistakes: [
+      'Dejar caer el codo y mover el hombro.',
+      'Balancear la mancuerna.',
+      'Girar el torso.',
+      'Usar demasiado peso.'
+    ],
+    tips: [
+      'El entrenador prioriza otras opciones: la polea o las extensiones sobre la cabeza estimulan más.',
+      'Si la haces, la versión en polea mantiene mejor la tensión.',
+      'Útil como ejercicio final con cargas ligeras.'
+    ],
+    goals: ['resistencia', 'hipertrofia'],
+    tension: {
+      where: 'La mancuerna genera la mayor resistencia con el brazo extendido; abajo apenas hay tensión.',
+      cue: 'Pausa arriba con el brazo recto, sin balanceo.'
+    },
+    anim: { preset: 'tri-kickback', p: ['triceps'], s: [] }
   },
 
   /* ============================ CUÁDRICEPS ============================ */
@@ -1303,6 +2077,123 @@ const EXERCISES = [
     anim: { preset: 'lunge', p: ['quads', 'glutes'], s: ['hams'] }
   },
 
+  {
+    id: 'sentadilla-bulgara',
+    name: 'Sentadilla búlgara',
+    groups: ['cuadriceps', 'gluteos'],
+    primary: ['Cuádriceps', 'Glúteo mayor'],
+    secondary: ['Aductores', 'Isquiotibiales'],
+    movement: 'Sentadilla a una pierna',
+    category: 'compuesto',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas y banco',
+    difficulty: 'intermedio',
+    description: 'Sentadilla a una pierna con el pie trasero apoyado en un banco. Trabaja cuádriceps y glúteo con un gran recorrido y menos carga sobre la columna que la sentadilla con barra.',
+    steps: {
+      prep: 'Colócate delante de un banco con una mancuerna en cada mano y apoya el empeine del pie trasero en él.',
+      start: 'Pie delantero a una distancia que te permita bajar con el talón apoyado. Torso firme.',
+      ecc: 'Baja flexionando la rodilla delantera hasta que el muslo quede casi paralelo al suelo.',
+      turn: 'Mantén el equilibrio abajo con el peso sobre la pierna delantera.',
+      con: 'Empuja el suelo con el pie delantero hasta subir.',
+      end: 'Completa las repeticiones y cambia de pierna.'
+    },
+    mistakes: [
+      'Empujar con la pierna trasera.',
+      'Colocar el pie delantero demasiado cerca del banco.',
+      'Dejar que la rodilla delantera se hunda hacia dentro.',
+      'Bajar sin control.'
+    ],
+    tips: [
+      'Torso más vertical: más cuádriceps. Torso algo inclinado y paso más largo: más glúteo.',
+      'Empieza sin peso hasta dominar el equilibrio.',
+      'Es exigente: déjala como único ejercicio de pierna a una pierna en la sesión.'
+    ],
+    goals: ['hipertrofia', 'fuerza', 'resistencia'],
+    reps: { fuerza: '5–8', hipertrofia: '6–12', resistencia: '12–20' },
+    tension: {
+      where: 'Cuádriceps y glúteo reciben la mayor demanda en la parte baja, cuando están estirados.',
+      cue: 'Baja hasta abajo con control y sube sin rebote.'
+    },
+    anim: { preset: 'lunge', opts: { bulgarian: true }, p: ['quads', 'glutes'], s: ['hams'] }
+  },
+  {
+    id: 'sentadilla-frontal',
+    name: 'Sentadilla frontal',
+    groups: ['cuadriceps'],
+    primary: ['Cuádriceps'],
+    secondary: ['Glúteo mayor', 'Aductores', 'Erectores', 'Abdomen'],
+    movement: 'Sentadilla',
+    category: 'compuesto',
+    equipment: ['barra'],
+    equipmentLabel: 'Barra y rack',
+    difficulty: 'avanzado',
+    description: 'Sentadilla con la barra apoyada en la parte delantera de los hombros. El torso queda más vertical, lo que da más protagonismo al cuádriceps.',
+    steps: {
+      prep: 'Coloca la barra en el rack a la altura de la parte alta del pecho.',
+      start: 'Apoya la barra sobre los deltoides delanteros con los codos altos y sácala con los pies a la anchura de los hombros.',
+      ecc: 'Baja con el torso vertical y los codos altos, flexionando cadera y rodillas.',
+      turn: 'Llega lo más profundo que permita tu movilidad con la espalda neutra.',
+      con: 'Sube empujando el suelo y manteniendo los codos altos.',
+      end: 'Termina de pie, con la barra estable.'
+    },
+    mistakes: [
+      'Dejar caer los codos y que la barra ruede hacia delante.',
+      'Redondear la espalda alta.',
+      'Levantar los talones.',
+      'Bajar sin control.'
+    ],
+    tips: [
+      'Si las muñecas no lo permiten, usa el agarre cruzado o correas.',
+      'Requiere movilidad de tobillo, cadera y muñeca: practica con poco peso.',
+      'Muy exigente: el entrenador la cuenta como ejercicio de alta demanda.'
+    ],
+    goals: ['fuerza', 'hipertrofia'],
+    tension: {
+      where: 'El cuádriceps recibe la mayor demanda en la parte baja, con las rodillas muy flexionadas.',
+      cue: 'Profundidad con control: la parte baja es la que más estímulo genera.'
+    },
+    anim: { preset: 'squat', opts: { front: true }, p: ['quads'], s: ['glutes', 'lowerBack', 'abs'] }
+  },
+  {
+    id: 'sentadilla-goblet',
+    name: 'Sentadilla goblet',
+    groups: ['cuadriceps'],
+    primary: ['Cuádriceps', 'Glúteo mayor'],
+    secondary: ['Aductores', 'Abdomen'],
+    movement: 'Sentadilla',
+    category: 'compuesto',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Una mancuerna o kettlebell',
+    difficulty: 'principiante',
+    description: 'Sentadilla sujetando una mancuerna pegada al pecho. Es la mejor forma de aprender el patrón de sentadilla: el peso delante ayuda a mantener el torso erguido.',
+    steps: {
+      prep: 'Sujeta una mancuerna en vertical contra el pecho, con ambas manos bajo el disco superior.',
+      start: 'Pies a la anchura de los hombros o algo más, con las puntas ligeramente hacia fuera.',
+      ecc: 'Baja entre las piernas con el torso erguido y los codos dentro de las rodillas.',
+      turn: 'Llega abajo con los talones apoyados.',
+      con: 'Sube empujando el suelo con todo el pie.',
+      end: 'Termina de pie con la mancuerna pegada al pecho.'
+    },
+    mistakes: [
+      'Separar la mancuerna del pecho.',
+      'Levantar los talones.',
+      'Rodillas hacia dentro.',
+      'Redondear la espalda abajo.'
+    ],
+    tips: [
+      'Ideal para principiantes antes de pasar a la sentadilla con barra.',
+      'Cuando la mancuerna más pesada se quede corta, pasa a la sentadilla o la sentadilla hack.',
+      'Útil también como calentamiento específico.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '6–10', hipertrofia: '8–15', resistencia: '15–20' },
+    tension: {
+      where: 'El cuádriceps y el glúteo trabajan más en la parte baja de la sentadilla.',
+      cue: 'Baja hasta donde mantengas la técnica y sube sin rebotar.'
+    },
+    anim: { preset: 'squat', opts: { goblet: true }, p: ['quads', 'glutes'], s: ['abs'] }
+  },
+
   /* ========================== ISQUIOTIBIALES ========================== */
   {
     id: 'peso-muerto-rumano',
@@ -1459,6 +2350,84 @@ const EXERCISES = [
     anim: { preset: 'rdl', opts: { bar: 'back' }, p: ['hams', 'lowerBack'], s: ['glutes'] }
   },
 
+  {
+    id: 'peso-muerto-rumano-mancuernas',
+    name: 'Peso muerto rumano con mancuernas',
+    groups: ['isquiotibiales'],
+    primary: ['Isquiotibiales', 'Glúteo mayor'],
+    secondary: ['Erectores de la columna', 'Antebrazo'],
+    movement: 'Bisagra de cadera',
+    category: 'compuesto',
+    equipment: ['mancuernas'],
+    equipmentLabel: 'Mancuernas',
+    difficulty: 'principiante',
+    description: 'Bisagra de cadera con mancuernas. Mismo patrón que el rumano con barra, más fácil de aprender y con menos carga absoluta sobre la espalda.',
+    steps: {
+      prep: 'De pie con una mancuerna en cada mano delante de los muslos y los pies a la anchura de la cadera.',
+      start: 'Rodillas ligeramente flexionadas, espalda neutra y hombros atrás.',
+      ecc: 'Lleva la cadera hacia atrás bajando las mancuernas pegadas a las piernas.',
+      turn: 'Detente cuando notes un estiramiento fuerte en los isquiotibiales, sin redondear la espalda.',
+      con: 'Extiende la cadera llevándola hacia delante hasta quedar de pie.',
+      end: 'Termina erguido sin echar el torso atrás.'
+    },
+    mistakes: [
+      'Redondear la espalda para bajar más.',
+      'Flexionar mucho las rodillas (se convierte en sentadilla).',
+      'Separar las mancuernas de las piernas.',
+      'Hiperextender la espalda arriba.'
+    ],
+    tips: [
+      'Buena puerta de entrada al rumano con barra.',
+      'Piensa en cerrar un cajón con el trasero.',
+      'Bajar hasta media tibia suele ser suficiente.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    tension: {
+      where: 'Los isquiotibiales reciben la mayor demanda abajo, cuando están más estirados.',
+      cue: 'Baja despacio y para antes de perder la espalda neutra.'
+    },
+    anim: { preset: 'rdl', opts: { equip: 'dumbbell' }, p: ['hams', 'glutes'], s: ['lowerBack', 'forearm'] }
+  },
+  {
+    id: 'curl-nordico',
+    name: 'Curl nórdico',
+    groups: ['isquiotibiales'],
+    primary: ['Isquiotibiales'],
+    secondary: ['Glúteo mayor', 'Gemelos'],
+    movement: 'Flexión de rodilla excéntrica',
+    category: 'aislamiento',
+    equipment: ['peso-corporal'],
+    equipmentLabel: 'Peso corporal y un anclaje para los tobillos',
+    difficulty: 'avanzado',
+    description: 'De rodillas con los tobillos sujetos, el cuerpo cae hacia delante frenado por los isquiotibiales. Es muy intenso en la fase excéntrica y produce mucho daño muscular al principio.',
+    steps: {
+      prep: 'Arrodíllate sobre una superficie acolchada y fija los tobillos bajo un soporte o con un compañero.',
+      start: 'Cuerpo recto de las rodillas a la cabeza, glúteos y abdomen activos.',
+      ecc: 'Inclínate hacia delante lo más lento posible, sin doblar la cadera.',
+      turn: 'Cuando no puedas frenar más, apoya las manos en el suelo.',
+      con: 'Empuja ligeramente con las manos y regresa usando los isquiotibiales.',
+      end: 'Vuelve a la posición vertical y repite.'
+    },
+    mistakes: [
+      'Doblar la cadera para acortar la palanca.',
+      'Dejarse caer sin frenar.',
+      'Hacer muchas series la primera vez (genera agujetas intensas).',
+      'Hacerlo sin un anclaje firme.'
+    ],
+    tips: [
+      'Empieza con 2 series de pocas repeticiones y progresa poco a poco.',
+      'Una banda elástica atada en alto ayuda mientras ganas fuerza.',
+      'Está asociado a la prevención de lesiones de isquiotibiales en el deporte.'
+    ],
+    goals: ['fuerza', 'hipertrofia'],
+    reps: { fuerza: '3–6', hipertrofia: '4–8', resistencia: '6–10 con ayuda' },
+    tension: {
+      where: 'La exigencia crece a medida que el cuerpo se acerca al suelo y la palanca se alarga.',
+      cue: 'Lo importante es frenar la caída: cuanto más lenta, mejor.'
+    },
+    anim: { preset: 'nordic', p: ['hams'], s: ['glutes', 'calves'] }
+  },
+
   /* ============================ GLÚTEOS ============================ */
   {
     id: 'hip-thrust',
@@ -1536,6 +2505,124 @@ const EXERCISES = [
       cue: 'Controla el regreso: la pierna no debe caer.'
     },
     anim: { preset: 'kickback', p: ['glutes'], s: ['hams'] }
+  },
+
+  {
+    id: 'abduccion-cadera',
+    name: 'Abducción de cadera en máquina',
+    groups: ['gluteos'],
+    primary: ['Glúteo medio', 'Glúteo menor'],
+    secondary: ['Tensor de la fascia lata', 'Glúteo mayor (fibras superiores)'],
+    movement: 'Abducción de cadera',
+    category: 'aislamiento',
+    equipment: ['maquina'],
+    equipmentLabel: 'Máquina de abductores',
+    difficulty: 'principiante',
+    description: 'Separación de las piernas contra resistencia. Trabaja el glúteo medio, que los ejercicios de sentadilla y bisagra estimulan menos.',
+    steps: {
+      prep: 'Siéntate con la espalda apoyada y las almohadillas por fuera de las rodillas.',
+      start: 'Rodillas juntas y manos en las asas.',
+      con: 'Separa las piernas todo lo que puedas sin despegar la cadera del asiento.',
+      turn: 'Mantén un instante con las piernas abiertas.',
+      ecc: 'Junta las piernas con control sin que las placas choquen.',
+      end: 'Repite manteniendo la tensión.'
+    },
+    mistakes: [
+      'Balancear el torso para abrir.',
+      'Recortar el recorrido.',
+      'Dejar que el peso golpee la pila.',
+      'Usar solo cargas que no permiten abrir del todo.'
+    ],
+    tips: [
+      'Inclinar el torso un poco hacia delante implica más al glúteo mayor.',
+      'Funciona bien con repeticiones moderadas o altas.',
+      'Complemento útil de un hip thrust o una sentadilla.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '8–12', hipertrofia: '10–20', resistencia: '15–30' },
+    tension: {
+      where: 'La máquina mantiene la tensión en todo el recorrido; la apertura máxima es la parte más exigente.',
+      cue: 'Abre del todo y vuelve despacio.'
+    },
+    anim: { preset: 'hip-abduction', p: ['gluteMed'], s: ['glutes'] }
+  },
+  {
+    id: 'puente-gluteo',
+    name: 'Puente de glúteo',
+    groups: ['gluteos'],
+    primary: ['Glúteo mayor'],
+    secondary: ['Isquiotibiales'],
+    movement: 'Extensión de cadera',
+    category: 'aislamiento',
+    equipment: ['peso-corporal'],
+    equipmentLabel: 'Peso corporal (opcional: disco o barra)',
+    difficulty: 'principiante',
+    description: 'Elevación de cadera tumbado en el suelo. Versión sencilla del hip thrust, con menos recorrido. Útil para aprender a extender la cadera con el glúteo.',
+    steps: {
+      prep: 'Túmbate boca arriba con las rodillas flexionadas y los pies apoyados a la anchura de la cadera.',
+      start: 'Brazos a los lados, espalda apoyada y abdomen firme.',
+      con: 'Empuja con los talones y eleva la cadera hasta alinear rodillas, cadera y hombros.',
+      turn: 'Aprieta los glúteos un instante arriba.',
+      ecc: 'Baja con control hasta casi tocar el suelo.',
+      end: 'Repite sin perder la posición de los pies.'
+    },
+    mistakes: [
+      'Arquear la zona lumbar arriba en lugar de extender la cadera.',
+      'Empujar con las puntas de los pies.',
+      'Separar las rodillas hacia fuera o hacia dentro.',
+      'Hacerlo rápido y sin pausa.'
+    ],
+    tips: [
+      'Cuando sea fácil, pasa al hip thrust con banco: tiene más recorrido.',
+      'Hacerlo a una pierna duplica la dificultad sin material.',
+      'Mete ligeramente la pelvis (retroversión) arriba.'
+    ],
+    goals: ['resistencia', 'hipertrofia'],
+    reps: { fuerza: '6–10 con carga', hipertrofia: '10–20', resistencia: '15–30' },
+    tension: {
+      where: 'La mayor exigencia aparece arriba, con la cadera extendida.',
+      cue: 'Pausa arriba con los glúteos apretados en cada repetición.'
+    },
+    anim: { preset: 'hip-thrust', opts: { floor: true }, p: ['glutes'], s: ['hams'] }
+  },
+  {
+    id: 'hiperextension-45',
+    name: 'Hiperextensión a 45° (enfocada al glúteo)',
+    groups: ['gluteos', 'isquiotibiales'],
+    primary: ['Glúteo mayor', 'Isquiotibiales'],
+    secondary: ['Erectores de la columna'],
+    movement: 'Extensión de cadera',
+    category: 'compuesto',
+    equipment: ['maquina', 'peso-corporal'],
+    equipmentLabel: 'Banco de hiperextensiones a 45°',
+    difficulty: 'principiante',
+    description: 'Extensión de cadera en el banco a 45°. Con la espalda algo redondeada arriba y las puntas hacia fuera, el trabajo se dirige al glúteo y los isquiotibiales en posición estirada.',
+    steps: {
+      prep: 'Ajusta la almohadilla justo por debajo de la cadera y fija los pies en el soporte.',
+      start: 'Cruza los brazos sobre el pecho y deja caer el torso hacia delante.',
+      con: 'Extiende la cadera hasta que el cuerpo forme una línea recta.',
+      turn: 'Aprieta los glúteos arriba sin arquear la zona lumbar.',
+      ecc: 'Baja con control hasta notar el estiramiento.',
+      end: 'Repite desde abajo.'
+    },
+    mistakes: [
+      'Subir por encima de la línea del cuerpo e hiperextender la espalda.',
+      'Almohadilla demasiado alta: bloquea la cadera.',
+      'Movimiento rápido y con impulso.',
+      'Mover solo la columna en lugar de la cadera.'
+    ],
+    tips: [
+      'Añade un disco abrazado al pecho cuando superes 15–20 repeticiones.',
+      'Fatiga menos que un peso muerto: buena opción en sesiones con mucho volumen.',
+      'Gira ligeramente las puntas de los pies hacia fuera para implicar más glúteo.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '6–10 con disco', hipertrofia: '10–20', resistencia: '15–25' },
+    tension: {
+      where: 'Glúteo e isquiotibiales trabajan más abajo, con la cadera flexionada y el músculo estirado.',
+      cue: 'Controla la bajada y sube con la cadera, no con la espalda.'
+    },
+    anim: { preset: 'back-extension', p: ['glutes', 'hams'], s: ['lowerBack'] }
   },
 
   /* =========================== PANTORRILLAS =========================== */
@@ -1655,6 +2742,84 @@ const EXERCISES = [
       cue: 'Recorrido completo y pausa abajo.'
     },
     anim: { preset: 'calf-press', p: ['calves'], s: [] }
+  },
+  {
+    id: 'elevacion-talones-una-pierna',
+    name: 'Elevación de talones a una pierna',
+    groups: ['pantorrillas'],
+    primary: ['Gastrocnemio'],
+    secondary: ['Sóleo'],
+    movement: 'Extensión de tobillo',
+    category: 'aislamiento',
+    equipment: ['peso-corporal', 'mancuernas'],
+    equipmentLabel: 'Escalón y mancuerna opcional',
+    difficulty: 'principiante',
+    description: 'Elevación de talones en un escalón con una sola pierna. El peso corporal ya supone una carga considerable, así que es ideal para entrenar en casa.',
+    steps: {
+      prep: 'Apoya la parte delantera de un pie en el borde de un escalón y sujétate a una pared o barra.',
+      start: 'Cruza la otra pierna por detrás y empieza con el talón arriba.',
+      ecc: 'Baja el talón lentamente por debajo del escalón hasta notar el estiramiento.',
+      turn: 'Haz una pausa de 1–2 segundos abajo, sin rebote.',
+      con: 'Sube el talón todo lo que puedas.',
+      end: 'Completa la serie y cambia de pierna.'
+    },
+    mistakes: [
+      'Rebotar abajo.',
+      'Recortar la bajada.',
+      'Flexionar la rodilla para ayudarse.',
+      'Ir demasiado rápido.'
+    ],
+    tips: [
+      'La parte baja (estirada) es la que más estímulo genera en la pantorrilla.',
+      'Añade una mancuerna en la mano del mismo lado cuando sea fácil.',
+      'Las pantorrillas toleran bien repeticiones altas.'
+    ],
+    goals: ['hipertrofia', 'resistencia'],
+    reps: { fuerza: '8–12 con carga', hipertrofia: '10–20', resistencia: '20–30' },
+    tension: {
+      where: 'El gastrocnemio trabaja más en la parte baja, con el tobillo flexionado y la pantorrilla estirada.',
+      cue: 'Baja hasta el fondo y haz una pausa: ahí está el estímulo.'
+    },
+    anim: { preset: 'calf-standing', opts: { single: true }, p: ['calves'], s: [] }
+  },
+  {
+    id: 'elevacion-talones-maquina',
+    name: 'Elevación de talones en máquina de pie',
+    groups: ['pantorrillas'],
+    primary: ['Gastrocnemio'],
+    secondary: ['Sóleo'],
+    movement: 'Extensión de tobillo',
+    category: 'aislamiento',
+    equipment: ['maquina'],
+    equipmentLabel: 'Máquina de gemelos de pie',
+    difficulty: 'principiante',
+    description: 'Elevación de talones de pie con las almohadillas sobre los hombros. Con las rodillas extendidas el gastrocnemio está estirado, y la máquina permite cargar mucho y estable.',
+    steps: {
+      prep: 'Coloca los hombros bajo las almohadillas y la parte delantera de los pies en la plataforma.',
+      start: 'Rodillas extendidas sin bloquear y talones arriba.',
+      ecc: 'Baja los talones lentamente por debajo de la plataforma.',
+      turn: 'Pausa de 1–2 segundos en el estiramiento.',
+      con: 'Sube los talones todo lo posible.',
+      end: 'Repite sin rebotar.'
+    },
+    mistakes: [
+      'Rebotar abajo con el tendón.',
+      'Flexionar las rodillas para empujar.',
+      'Recortar el recorrido para mover más peso.',
+      'Repeticiones demasiado rápidas.'
+    ],
+    tips: [
+      'Un estudio encontró más crecimiento del gemelo entrenando en la parte estirada que con el recorrido completo: prioriza la parte baja.',
+      'Puedes terminar la serie con repeticiones parciales abajo al llegar al fallo.',
+      'Combínala con la versión sentada para cubrir el sóleo.'
+    ],
+    goals: ['hipertrofia', 'resistencia', 'fuerza'],
+    reps: { fuerza: '6–10', hipertrofia: '8–15', resistencia: '15–25' },
+    tension: {
+      where: 'La mayor exigencia aparece abajo, con el gastrocnemio estirado.',
+      cue: 'Baja lento y haz pausa en el estiramiento en cada repetición.'
+    },
+    anim: { preset: 'calf-standing', opts: { machine: true }, p: ['calves'], s: [] }
   }
 ];
 
@@ -1667,18 +2832,3 @@ const DEFAULT_REPS = {
 
 /* Índice por id para búsquedas rápidas */
 const EXERCISE_INDEX = Object.fromEntries(EXERCISES.map(ex => [ex.id, ex]));
-
-/* Ejercicios recomendados por grupo muscular. Se destacan en la selección
-   para animar a elegir opciones eficaces y no solo las más cómodas. */
-const RECOMMENDED = {
-  pecho: { ids: ['press-banca', 'press-inclinado-mancuernas', 'fondos'], why: 'Permiten cargar de forma progresiva y trabajan el pecho en todo su recorrido, incluida la posición estirada.' },
-  espalda: { ids: ['dominadas', 'remo-barra', 'jalon-pecho'], why: 'Combinan un jalón vertical y un remo horizontal: cubren dorsales y espalda media.' },
-  hombros: { ids: ['press-militar', 'elevaciones-laterales'], why: 'Un empuje vertical pesado más un aislamiento del deltoides lateral, que el press trabaja poco.' },
-  'deltoides-posteriores': { ids: ['face-pull', 'pajaro-maquina'], why: 'Mantienen la tensión en todo el recorrido y equilibran el trabajo de empuje.' },
-  biceps: { ids: ['curl-inclinado', 'curl-barra'], why: 'El curl inclinado estira más el bíceps; el curl con barra permite progresar en carga.' },
-  triceps: { ids: ['extension-sobre-cabeza', 'press-cerrado'], why: 'La extensión sobre la cabeza estira la cabeza larga; el press cerrado permite cargas altas.' },
-  cuadriceps: { ids: ['sentadilla', 'sentadilla-hack', 'prensa'], why: 'Ejercicios compuestos con gran flexión de rodilla, donde el cuádriceps recibe más demanda.' },
-  isquiotibiales: { ids: ['peso-muerto-rumano', 'curl-femoral-sentado'], why: 'Una bisagra de cadera y una flexión de rodilla: trabajan las dos funciones del músculo en posición estirada.' },
-  gluteos: { ids: ['hip-thrust', 'sentadilla'], why: 'El hip thrust carga el glúteo en extensión y la sentadilla en posición estirada: se complementan.' },
-  pantorrillas: { ids: ['elevacion-talones-pie', 'elevacion-talones-sentado'], why: 'De pie trabaja más el gemelo y sentado el sóleo: juntos cubren toda la pantorrilla.' }
-};

@@ -11,6 +11,10 @@
        selections  ejercicios elegidos por día y grupo muscular
        active      entrenamiento en curso (para poder reanudarlo)
        last        resumen del último entrenamiento terminado
+       configured  si ya terminó de preparar su rutina (muestra su panel)
+       since       fecha en la que terminó de prepararla
+       history     entrenamientos terminados (para la racha)
+       best        mejor racha alcanzada
    ===================================================================== */
 
 /* Tamaño relativo de cada grupo: los grandes se entrenan antes */
@@ -20,6 +24,17 @@ const GROUP_SIZE = {
   triceps: 2, biceps: 2, 'deltoides-posteriores': 2,
   pantorrillas: 3
 };
+
+const DEMAND_RANK = { alta: 0, media: 1, baja: 2 };
+
+/* Fechas locales en formato AAAA-MM-DD */
+const dateKey = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+/* Id de día (lun..dom) de una fecha */
+const dayIdOf = d => DAYS[(d.getDay() + 6) % 7].id;
+const mondayOf = d => addDays(d, -((d.getDay() + 6) % 7));
 
 const Planner = {
   method(id) {
@@ -52,10 +67,9 @@ const Planner = {
     return !!(RECOMMENDED[groupId] && RECOMMENDED[groupId].ids.includes(exId));
   },
 
-  /* Ejercicios de un grupo: primero los recomendados */
+  /* Ejercicios de un grupo en el orden del entrenador: recomendados primero */
   exercisesFor(groupId) {
-    const list = EXERCISES.filter(ex => ex.groups.includes(groupId));
-    return list.sort((a, b) => this.isRecommended(b.id, groupId) - this.isRecommended(a.id, groupId));
+    return Coach.ordered(groupId);
   },
 
   repsFor(ex, goalId) {
@@ -69,11 +83,14 @@ const Planner = {
     let done = 0, complete = session.groups.length > 0;
     const perGroup = this.groupsOf(session).map(g => {
       const count = (selection[g.id] || []).length;
+      const cap = Coach.groupCap(methodId, variantId, dayId, g.id);
       done += count;
       if (count < g.min) complete = false;
-      return { ...g, count, ready: count >= g.min, full: count >= g.max };
+      return { ...g, max: cap, count, ready: count >= g.min, full: count >= cap };
     });
-    return { session, perGroup, done, complete };
+    const coach = session.groups.length ? Coach.review(methodId, variantId, dayId) : null;
+    if (coach && !coach.ok) complete = false;
+    return { session, perGroup, done, complete, coach };
   },
 
   weeklyFrequency(variant) {
@@ -88,7 +105,8 @@ const Planner = {
      El usuario elige los ejercicios; la aplicación decide el orden más eficaz:
      1. Ejercicios compuestos antes que los de aislamiento.
      2. Grupos musculares grandes antes que los pequeños.
-     3. Entre ejercicios parecidos, los más técnicos primero (con menos fatiga).
+     3. Entre ejercicios parecidos, los más exigentes y técnicos primero,
+        cuando hay menos fatiga.
      Un mismo ejercicio elegido en dos grupos (por ejemplo, la sentadilla en
      cuádriceps y glúteos) aparece una sola vez. */
   orderRoutine(methodId, variantId, dayId) {
@@ -107,7 +125,7 @@ const Planner = {
     const diff = { avanzado: 0, intermedio: 1, principiante: 2 };
     const key = it => {
       const ex = EXERCISE_INDEX[it.id];
-      return [ex.category === 'compuesto' ? 0 : 1, GROUP_SIZE[it.g] ?? 2, diff[ex.difficulty], it.pos];
+      return [ex.category === 'compuesto' ? 0 : 1, GROUP_SIZE[it.g] ?? 2, DEMAND_RANK[Coach.rating(it.id).demand], diff[ex.difficulty], it.pos];
     };
     items.sort((a, b) => {
       const ka = key(a), kb = key(b);
@@ -131,7 +149,11 @@ const WorkoutStore = (() => {
   const KEY = 'fitsplit:v2';
   const listeners = new Set();
 
-  const defaults = () => ({ goal: 'hipertrofia', onboarded: false, plan: null, selections: {}, active: null, last: null });
+  const defaults = () => ({
+    goal: 'hipertrofia', onboarded: false, plan: null, selections: {}, active: null, last: null,
+    configured: false, since: null, history: [], best: 0
+  });
+  const ACTIVE_MAX_AGE = 24 * 60 * 60 * 1000; // un entrenamiento sin terminar caduca a las 24 h
 
   /* Limpia datos antiguos o inválidos */
   function sanitize(data) {
@@ -152,10 +174,17 @@ const WorkoutStore = (() => {
       if (Object.keys(out).length) clean.selections[key] = out;
     }
     const a = data.active;
-    if (a && Array.isArray(a.items) && a.items.length && a.items.every(it => EXERCISE_INDEX[it.id])) {
+    const fresh = a && typeof a.started === 'number' && Date.now() - a.started < ACTIVE_MAX_AGE;
+    if (fresh && Array.isArray(a.items) && a.items.length && a.items.every(it => EXERCISE_INDEX[it.id])) {
       clean.active = { ...a, index: Math.min(Math.max(0, a.index | 0), a.items.length - 1), done: a.done || {} };
     }
     if (data.last && data.last.sessionName) clean.last = data.last;
+    clean.configured = !!data.configured && !!clean.plan;
+    if (typeof data.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.since)) clean.since = data.since;
+    if (Array.isArray(data.history)) {
+      clean.history = data.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.date)).slice(-400);
+    }
+    clean.best = Math.max(0, data.best | 0);
     return clean;
   }
 
@@ -182,6 +211,52 @@ const WorkoutStore = (() => {
 
   const keyOf = (m, v, d) => `${m}|${v}|${d}`;
 
+  /* RACHA
+     Suma los entrenamientos terminados mientras se cumplan los días
+     planificados de cada semana (lunes a domingo). Si un día no se puede,
+     recuperarlo otro día de la misma semana mantiene la racha. La semana en
+     curso nunca rompe la racha: aún hay tiempo. */
+  function computeStreak(now = new Date()) {
+    const plan = state.plan;
+    const variant = plan && Planner.variant(Planner.method(plan.m), plan.v);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayKey = dateKey(today);
+    const monday = mondayOf(today);
+    const byDate = {};
+    for (const h of state.history) byDate[h.date] = (byDate[h.date] || 0) + 1;
+    const since = state.since ? parseKey(state.since) : (state.history[0] ? parseKey(state.history[0].date) : today);
+    const scheduled = d => !!(variant && variant.schedule[dayIdOf(d)]) && d >= since;
+    const countWeek = start => {
+      let done = 0, required = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(start, i);
+        done += byDate[dateKey(d)] || 0;
+        if (scheduled(d)) required += 1;
+      }
+      return { done, required };
+    };
+    const week = countWeek(monday);
+    let current = week.done;
+    for (let start = addDays(monday, -7); start >= mondayOf(since); start = addDays(start, -7)) {
+      const w = countWeek(start);
+      if (w.done < w.required) break;
+      current += w.done;
+    }
+    const days = DAYS.map((day, i) => {
+      const d = addDays(monday, i);
+      const key = dateKey(d);
+      return {
+        id: day.id, date: key, trained: !!byDate[key], scheduled: !!(variant && variant.schedule[day.id]),
+        isToday: key === todayKey, isPast: d < today, beforeStart: d < since
+      };
+    });
+    return {
+      current, best: Math.max(state.best, current), total: state.history.length,
+      week: { done: days.filter(x => x.trained).length, required: week.required, days },
+      trainedToday: !!byDate[todayKey], todayId: dayIdOf(today)
+    };
+  }
+
   return {
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
@@ -202,11 +277,31 @@ const WorkoutStore = (() => {
       commit();
     },
 
+    /* Rutina preparada: a partir de aquí el inicio es el panel personal */
+    isConfigured: () => state.configured,
+    setConfigured(value) {
+      state.configured = !!value && !!state.plan;
+      if (state.configured && !state.since) state.since = dateKey();
+      commit();
+    },
+
+    /* Racha e historial */
+    getStreak: now => computeStreak(now),
+    getHistory: () => state.history,
+
+    /* Borra todos los datos y vuelve a empezar */
+    resetAll() {
+      state = defaults();
+      commit();
+    },
+
     /* Selección de ejercicios */
     getSelection(m, v, d) { return state.selections[keyOf(m, v, d)] || {}; },
     getGroup(m, v, d, g) { return (state.selections[keyOf(m, v, d)] || {})[g] || []; },
 
-    toggle(m, v, d, g, exId, max) {
+    /* Añade o quita un ejercicio. Las reglas del entrenador (coach.js)
+       deciden si se puede añadir: si no, devuelve 'blocked'. */
+    toggle(m, v, d, g, exId) {
       const key = keyOf(m, v, d);
       const plan = state.selections[key] || {};
       const list = plan[g] || [];
@@ -215,7 +310,7 @@ const WorkoutStore = (() => {
         plan[g] = list.filter(id => id !== exId);
         result = 'removed';
       } else {
-        if (list.length >= max) return 'full';
+        if (!Coach.check(m, v, d, g, exId).ok) return 'blocked';
         plan[g] = [...list, exId];
         result = 'added';
       }
@@ -224,6 +319,15 @@ const WorkoutStore = (() => {
       else delete state.selections[key];
       commit();
       return result;
+    },
+
+    /* Sustituye la selección de un día (autocompletado del entrenador) */
+    setSelection(m, v, d, sel) {
+      const out = {};
+      for (const [g, ids] of Object.entries(sel)) if (ids.length) out[g] = [...new Set(ids)];
+      if (Object.keys(out).length) state.selections[keyOf(m, v, d)] = out;
+      else delete state.selections[keyOf(m, v, d)];
+      commit();
     },
 
     clearSession(m, v, d) {
@@ -278,7 +382,11 @@ const WorkoutStore = (() => {
         minutes: Math.max(1, Math.round((Date.now() - a.started) / 60000)),
         goal: a.goal
       };
+      state.history.push({ date: dateKey(), d: a.d, m: a.m, v: a.v, name: state.last.sessionName, tone: session.tone });
       state.active = null;
+      const streak = computeStreak();
+      state.best = Math.max(state.best, streak.current);
+      state.last.streak = streak.current;
       commit();
       return state.last;
     },
