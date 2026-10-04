@@ -6,7 +6,7 @@
    vez, se descarga la versión nueva para la próxima visita.
    Al cambiar archivos de la web, sube VERSION para renovar la copia.
    ===================================================================== */
-const VERSION = 'fitsplit-v1';
+const VERSION = 'fitsplit-v2';
 const FILES = [
   './',
   'index.html',

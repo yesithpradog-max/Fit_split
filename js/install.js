@@ -22,7 +22,7 @@ const Install = (() => {
   const isAndroid = /android/i.test(ua);
   const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
   const isIOSSafari = isIOS && !/crios|fxios|edgios|opios|gsa\//i.test(ua);
-  const isNativeApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const isNativeApp = /FitSplitApp/.test(ua) || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   const isStandalone = () => isNativeApp || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const detected = isAndroid ? 'android' : isIOS ? 'ios' : 'desktop';
 
