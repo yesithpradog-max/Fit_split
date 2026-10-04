@@ -302,8 +302,8 @@ const LEARN_TOPICS = [
           'Más ejercicios no es mejor. Los beneficios de añadir series en la misma sesión se reducen a partir de un punto, mientras la fatiga y el riesgo de lesión siguen subiendo. Por eso FIT SPLIT no te deja seleccionar sin control:'
         ],
         list: [
-          'Como máximo 2 ejercicios muy exigentes por sesión (por ejemplo, sentadilla y peso muerto rumano). El tercero queda bloqueado.',
-          'Un número máximo de ejercicios por sesión según tu objetivo: 5 para fuerza, 8 para hipertrofia y 9 para resistencia.',
+          'Como máximo 2 ejercicios muy exigentes por sesión (por ejemplo, press de banca y press militar). En el día de pierna solo 1: la sentadilla o el peso muerto rumano, no los dos.',
+          'Un número máximo de ejercicios por sesión según tu objetivo: 5 para fuerza, 8 para hipertrofia y 9 para resistencia. El día de pierna es más corto: 4 para fuerza y 5 para hipertrofia o resistencia (hasta 2 de cuádriceps o isquios y 1 de glúteos y de pantorrillas).',
           'Un máximo de series por músculo y sesión (unas 9, o 12 si la sesión se centra en uno o dos grupos).',
           'Hueco reservado para los grupos que aún no tienen ejercicios, para que la sesión quede equilibrada.',
           'Los ejercicios se ordenan solos: compuestos y exigentes primero, cuando estás más fresco.'
@@ -320,7 +320,7 @@ const LEARN_TOPICS = [
       'Los ejercicios que cargan el músculo estirado suelen rendir más por serie.',
       'Cualquier ejercicio funciona si te acercas al fallo con buena técnica: la estrella indica los más eficaces.',
       'Más ejercicios por sesión no es mejor: la fatiga crece más rápido que el beneficio.',
-      'FIT SPLIT limita los ejercicios muy exigentes a 2 por sesión.'
+      'FIT SPLIT limita los ejercicios muy exigentes a 2 por sesión, y a 1 en el día de pierna.'
     ],
     myths: [
       { myth: 'Cuantos más ejercicios hagas para un músculo en un día, más crece.', reality: 'Pasadas unas 10–12 series por músculo y sesión, el beneficio extra es pequeño y la fatiga sigue aumentando. Es mejor repartir el volumen en la semana.' },

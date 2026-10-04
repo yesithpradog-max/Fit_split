@@ -196,7 +196,9 @@ const GOAL_ORDER = ['fuerza', 'hipertrofia', 'resistencia'];
    limits.min: ejercicios mínimos por grupo para dar la sesión por lista.
    limits.max: ejercicios máximos por grupo.
    --------------------------------------------------------------------- */
-const LEG_GROUPS = ['cuadriceps', 'isquiotibiales', 'gluteos', 'pantorrillas'];
+/* Día de pierna: es la sesión que más fatiga genera. Como máximo 2 ejercicios
+   de cuádriceps o isquios y 1 de glúteos y de pantorrillas (ver COACH_LIMITS.legs). */
+const LEG_GROUPS = [{ id: 'cuadriceps', max: 2 }, { id: 'isquiotibiales', max: 2 }, { id: 'gluteos', max: 1 }, { id: 'pantorrillas', max: 1 }];
 
 const SESSION_TYPES = {
   push: {
@@ -218,7 +220,7 @@ const SESSION_TYPES = {
     description: 'Tren inferior completo: cuádriceps, isquiotibiales, glúteos y pantorrillas.',
     groups: LEG_GROUPS,
     limits: { min: 1, max: 3 },
-    hint: 'Con cuatro grupos, 1–2 ejercicios por grupo suelen dar una sesión completa y manejable.'
+    hint: 'Es la sesión más exigente: 4–5 ejercicios en total y un solo ejercicio muy exigente (sentadilla o peso muerto rumano).'
   },
   'pecho-espalda': {
     id: 'pecho-espalda', name: 'Pecho + Espalda', subtitle: 'Antagonistas', tone: 'upper',
@@ -239,7 +241,7 @@ const SESSION_TYPES = {
     description: 'Cuádriceps, isquiotibiales, glúteos y pantorrillas en una sesión.',
     groups: LEG_GROUPS,
     limits: { min: 1, max: 3 },
-    hint: 'Coloca primero el ejercicio más exigente (sentadilla o prensa) cuando estés más fresco.'
+    hint: 'Coloca primero el ejercicio más exigente (sentadilla o prensa) cuando estés más fresco. Con 4–5 ejercicios es suficiente.'
   },
   upper: {
     id: 'upper', name: 'Upper', subtitle: 'Tren superior', tone: 'upper',

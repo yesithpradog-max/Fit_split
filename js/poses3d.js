@@ -245,22 +245,7 @@ const Poses3D = (() => {
     };
   }
   /* Máquina de press de hombro: palancas desde un eje tras el respaldo */
-  function machineArms(scene) {
-    const m = P().mats(), parts = [];
-    for (const sx of [1, -1]) {
-      const lever = P().mesh(P().geo.cyl, m.frameLight), grip = P().handle('D');
-      scene.add(lever, grip); parts.push({ sx, lever, grip });
-    }
-    scene.add(P().box([0, 1.0, -0.42], [0.85, 0.07, 0.07], m.frame), P().box([0.42, 0.55, -0.42], [0.07, 1.1, 0.07], m.frame), P().box([-0.42, 0.55, -0.42], [0.07, 1.1, 0.07], m.frame));
-    return solved => {
-      for (const p of parts) {
-        const g = solved.info.arms[p.sx > 0 ? 'L' : 'R'].grip;
-        const pivot = V3(p.sx * 0.42, 1.0, -0.42);
-        P().placeCyl(p.lever, pivot, V3(g.x + p.sx * 0.07, g.y - 0.05, g.z), 0.022);
-        P().orient(p.grip, g, V3(0, 1, 0), V3(p.sx, 0, 0));
-      }
-    };
-  }
+  function machineArms(scene) { return leverArms(scene, [0.44, 0.92, -0.32], { post: true }); }
   /* Máquina de gemelos de pie: almohadillas sobre los hombros */
   function calfMachine(scene) {
     const m = P().mats();
@@ -280,25 +265,29 @@ const Poses3D = (() => {
     const b = back * D, hinge = seatZ - seatLen / 2;
     return { pelvis: [0, seatH + 0.088, hinge + (0.13 - 0.088 * Math.cos(b)) / Math.sin(b)], torso: { pitch: back - 90 } };
   }
-  /* Asas en palancas que giran alrededor de un eje (press de pecho, remo) */
-  function leverArms(scene, pivot, { vertical = true, offset = 0.06 } = {}) {
+  /* Asas en palancas que giran alrededor de un eje (press de pecho y de hombro,
+     remo). La palanca va por fuera del cuerpo, en el plano x = ±pivot.x, y un
+     travesaño corto la une al asa: así nunca atraviesa hombros ni brazos. */
+  function leverArms(scene, pivot, { vertical = true, post = true } = {}) {
     const m = P().mats(), parts = [];
     for (const sx of [1, -1]) {
-      const lever = P().mesh(P().geo.cyl, m.frameLight), grip = P().handle('D');
-      scene.add(lever, grip); parts.push({ sx, lever, grip });
-      scene.add(P().box([sx * pivot[0], pivot[1] / 2, pivot[2]], [0.07, pivot[1], 0.07], m.frame));
+      const lever = P().mesh(P().geo.cyl, m.frameLight), link = P().mesh(P().geo.cyl, m.frameLight), grip = P().handle('D');
+      scene.add(lever, link, grip); parts.push({ sx, lever, link, grip });
+      if (post) scene.add(P().box([sx * pivot[0], pivot[1] / 2, pivot[2]], [0.07, pivot[1], 0.07], m.frame));
+      const hub = P().mesh(P().geo.cyl, m.chrome); P().placeCyl(hub, [sx * (pivot[0] - 0.05), pivot[1], pivot[2]], [sx * (pivot[0] + 0.05), pivot[1], pivot[2]], 0.035); scene.add(hub);
     }
     return solved => {
       for (const p of parts) {
         const g = solved.info.arms[p.sx > 0 ? 'L' : 'R'].grip;
-        const end = V3(g.x + p.sx * offset, g.y, g.z);
-        P().placeCyl(p.lever, V3(p.sx * pivot[0], pivot[1], pivot[2]), end, 0.02);
+        const end = V3(p.sx * pivot[0], g.y, g.z);
+        P().placeCyl(p.lever, V3(p.sx * pivot[0], pivot[1], pivot[2]), end, 0.022);
+        P().placeCyl(p.link, end, V3(g.x + p.sx * 0.065, g.y, g.z), 0.016);
         P().orient(p.grip, g, vertical ? V3(0, 1, 0) : V3(1, 0, 0), V3(p.sx, 0, 0));
       }
     };
   }
   const leverHandles = (scene, pivot) => leverArms(scene, pivot, { vertical: true });
-  const rowHandles = scene => leverArms(scene, [0.3, 0.32, 0.72], { vertical: true });
+  const rowHandles = scene => leverArms(scene, [0.42, 1.68, 0.52], { vertical: true });
   /* Brazos del contractor / pájaro: giran alrededor de ejes verticales sobre los hombros */
   function flyArms(scene, seat, rev) {
     const m = P().mats(), parts = [];
@@ -335,7 +324,7 @@ const Poses3D = (() => {
     return solved => {
       const lL = solved.info.legs.L, lR = solved.info.legs.R;
       const sd = V3().subVectors(lL.ankle, lL.knee).normalize();
-      const fwd = V3(0, sd.z, -sd.y).multiplyScalar(side === 'front' ? -1 : 1); // perpendicular a la tibia
+      const fwd = V3(0, sd.z, -sd.y).multiplyScalar(side === 'front' ? 1 : -1); // perpendicular a la tibia (delante o detrás)
       const c = V3().addVectors(lL.ankle, lR.ankle).multiplyScalar(0.5).addScaledVector(sd, -0.07).addScaledVector(fwd, 0.065);
       P().placeCyl(roll, c.clone().setX(-0.2), c.clone().setX(0.2), 0.045);
       const pivot = V3(0.3, lL.knee.y, lL.knee.z);
@@ -1207,7 +1196,7 @@ const Poses3D = (() => {
     return {
       standing: true, cam: { yaw: -78, pitch: 8 },
       setup(scene) {
-        if (bulg) scene.add(P().benchFlat(benchZ - 0.6, benchZ + 0.12, benchH));
+        if (bulg) scene.add(P().benchFlat(benchZ - 0.55, benchZ + 0.2, benchH));
         const [a, b] = dbs(scene, { head: 0.058 }); return { a, b };
       },
       pose: spec,
@@ -1356,16 +1345,18 @@ const Poses3D = (() => {
     function spec(t) {
       const e = ease(t);
       const { pelvis, torso } = seatPose(seat);
-      const sh = SH(), ext = Math.sqrt((armEff() - 0.045) ** 2 - (sh.y - 0.37) ** 2 - 0.0);
-      const g = V3(0.24, 0.36, 0.2).lerp(V3(0.165, 0.37, sh.z + ext), e);
-      const a = armsL(pelvis, torso, { grip: arr(g), palm: [-0.35, 0, 1], pole: [1, -0.75, -0.1], curl: 0.92, upRot: 0, protract: lerp(-6, 10, e) });
+      const hand = { palm: [-0.8, 0, 0.6], pole: [0.75, -1, -0.15], curl: 0.92, upRot: 0 };
+      // Final: brazos extendidos al frente sin bloquear (codo ~12°), a la altura del pecho medio
+      const end = toLocal(pelvis, torso, probeGrip({ pelvis, torso, arms: armsL(pelvis, torso, { dir: [0.0, -0.22, 1], flex: 12, protract: 8, ...hand }) }));
+      const g = V3(0.24, 0.36, 0.2).lerp(end, e);
+      const a = armsL(pelvis, torso, { grip: arr(g), protract: lerp(-6, 8, e), ...hand });
       return { pelvis, torso, head: 0, arms: a, legs: seatLegs(pelvis, 0.15, 0.46) };
     }
     return {
       cam: { yaw: -55, pitch: 12 },
       setup(scene) {
         scene.add(P().benchIncline({ seatZ: seat.seatZ, seatH: seat.seatH, back: seat.back, backLen: 0.8 }));
-        return { m: leverHandles(scene, [0.36, 1.62, -0.05], 'vertical') };
+        return { m: leverHandles(scene, [0.46, 1.58, -0.22]) };
       },
       pose: spec,
       update(d, t, solved) { d.m(solved); }
@@ -1464,8 +1455,11 @@ const Poses3D = (() => {
       cam: { yaw: -55, pitch: 10 },
       setup(scene) {
         scene.add(P().pad([0, seatH - 0.035, -0.02], [0.36, 0.07, 0.34]), P().tube([0, 0.03, -0.02], [0, seatH - 0.07, -0.02], 0.032), P().tube([0, 0.03, -0.3], [0, 0.03, 0.5], 0.03));
-        for (const sx of [1, -1]) scene.add(P().pad([sx * 0.11, 0.69, 0.2], [0.12, 0.1, 0.1]));
-        scene.add(P().tube([0, 0.69, 0.27], [0, 0.03, 0.4], 0.028), P().box([0, 1.2, -0.42], [0.09, 2.4, 0.09], P().mats().frame), P().tube([0, 2.36, -0.42], [0, 2.36, 0.15], 0.03));
+        // Rodillos sobre la parte baja de los muslos (fijan el cuerpo al tirar)
+        const lg = Biomech.solve(spec(0)).info.legs.L;
+        const rp = V3().lerpVectors(lg.hip, lg.knee, 0.78).add(V3(0, 0.12, 0));
+        for (const sx of [1, -1]) scene.add(P().cylBetween([sx * 0.02, rp.y, rp.z], [sx * 0.24, rp.y, rp.z], 0.048, P().mats().pad));
+        scene.add(P().tube([0, rp.y, rp.z], [0, rp.y, rp.z + 0.12], 0.028), P().tube([0, rp.y, rp.z + 0.12], [0, 0.03, rp.z + 0.2], 0.028), P().box([0, 1.2, -0.42], [0.09, 2.4, 0.09], P().mats().frame), P().tube([0, 2.36, -0.42], [0, 2.36, 0.15], 0.03));
         const h = P().handle(neutral ? 'v' : 'lat'); scene.add(h);
         return { h, c: cable(scene) };
       },
@@ -1666,7 +1660,7 @@ const Poses3D = (() => {
     const flat = dist => { const pc = plateAt(dist, pelvis); return { pelvis, torso, head: 8, arms: arm, legs: { L: flatLeg(pc, 1), R: flatLeg(pc, -1) }, _plate: arr(pc) }; };
     // Distancia de la plataforma para una flexión de rodilla dada
     const distFor = k => solve1(d => Biomech.solve(flat(d)).info.legs.L.kneeFlex - k, 0.25, 1.2, 22);
-    const dTop = calf ? distFor(4) - 0.17 : distFor(10), dBot = calf ? dTop : distFor(92);
+    const dTop = calf ? distFor(4) - 0.04 : distFor(10), dBot = calf ? dTop : distFor(92);
     function spec(t) {
       const e = ease(t);
       if (!calf) return flat(lerp(dTop, dBot, e));
@@ -1674,12 +1668,10 @@ const Poses3D = (() => {
       // pasa de flexión plantar completa a un estiramiento cómodo
       const pa = lerp(-26, 14, e), dist = dTop - 0.1 * Math.sin(pa * D);
       const pc = plateAt(dist, pelvis);
-      const leg = sx => {
-        const toe = pc.clone().addScaledVector(up, -0.16).add(V3(sx * 0.11, 0, 0)).addScaledVector(sled, -0.01);
-        const want = lerp(-28, 14, e);
-        const fp = solve1(f => Biomech.solve({ pelvis, torso, legs: { L: { toe: arr(toe), footPitch: f, pole: [0.1, 1, 0] } } }).info.legs.L.dorsi - want, 60, 200, 18);
-        return { toe: arr(toe), footPitch: fp, footYaw: 4, pole: [sx * 0.1, 1, 0] };
-      };
+      const toeAt = sx => pc.clone().addScaledVector(up, -0.16).add(V3(sx * 0.11, 0, 0)).addScaledVector(sled, -0.01);
+      const want = lerp(-28, 14, e);
+      const fp = solve1(f => Biomech.solve({ pelvis, torso, legs: { L: { toe: arr(toeAt(1)), footPitch: f, footYaw: 4, pole: [0.1, 1, 0] } } }).info.legs.L.dorsi - want, 60, 200, 18);
+      const leg = sx => ({ toe: arr(toeAt(sx)), footPitch: fp, footYaw: 4, pole: [sx * 0.1, 1, 0] });
       return { pelvis, torso, head: 8, arms: arm, legs: { L: leg(1), R: leg(-1) }, _plate: arr(pc) };
     }
     return {
@@ -1689,9 +1681,18 @@ const Poses3D = (() => {
         const m = P().mats();
         const sp = spec(0);
         const p0 = V3(...sp._plate);
-        for (const sx of [1, -1]) scene.add(P().tube(V3(sx * 0.38, 0.12, 0.25).toArray(), p0.clone().addScaledVector(sled, 0.35).setX(sx * 0.38).toArray(), 0.035));
+        // Guías paralelas al recorrido, por debajo de la plataforma, con sus apoyos
+        const pl = plateAt(0, pelvis);
+        const r0 = pl.clone().addScaledVector(sled, 0.25).addScaledVector(up, -0.42), r1 = r0.clone().addScaledVector(sled, 1.25);
+        for (const sx of [1, -1]) {
+          const a = r0.clone().setX(sx * 0.24), b = r1.clone().setX(sx * 0.24);
+          scene.add(P().tube(arr(a), arr(b), 0.035), P().tube(arr(b), [b.x, 0.03, b.z], 0.04), P().tube(arr(a), [a.x, 0.03, a.z], 0.035));
+        }
+        scene.add(P().tube([0, 0.03, r0.z], [0, 0.03, r1.z], 0.035));
         const plate = new T.Group();
-        plate.add(P().box([0, 0, 0], [0.62, 0.5, 0.04], m.frameLight), P().box([0, 0, 0.05], [0.74, 0.56, 0.06], m.frame));
+        // Plataforma (la cara mira hacia la persona) y carro que desliza por las guías
+        plate.add(P().box([0, 0.05, 0.02], [0.62, 0.66, 0.04], m.frameLight), P().box([0, 0.05, 0.07], [0.74, 0.72, 0.06], m.frame));
+        plate.add(P().box([0, -0.36, 0.2], [0.56, 0.06, 0.3], m.frame), P().box([0, -0.2, 0.14], [0.08, 0.3, 0.08], m.frame));
         scene.add(plate);
         return { plate };
       },

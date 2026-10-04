@@ -192,7 +192,7 @@ const Props3D = (() => {
     const a = back * Math.PI / 180;
     const hingeZ = seatZ - seatLen / 2;
     const cz = hingeZ - Math.cos(a) * backLen / 2, cy = seatH + Math.sin(a) * backLen / 2;
-    const b = pad([x, cy, cz], [0.3, 0.07, backLen], [-back, 0, 0]);
+    const b = pad([x, cy, cz], [0.3, 0.07, backLen], [back, 0, 0]); // sube hacia -z (detrás de quien se sienta)
     g.add(b);
     g.add(tube([x, 0.03, seatZ], [x, seatH - 0.08, seatZ], 0.028));
     g.add(tube([x, 0.03, hingeZ - 0.5], [x, 0.03, seatZ + 0.3], 0.028));

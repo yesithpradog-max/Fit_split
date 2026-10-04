@@ -60,6 +60,7 @@ Cada ejercicio tiene una **exigencia** (alta, media o baja) y una **valoración*
 | Ejercicios por sesión | 5 (fuerza) · 8 (hipertrofia) · 9 (resistencia) |
 | Series por músculo y sesión | ≈ 9, o 12 si la sesión se centra en 1–2 grupos |
 | Grupos sin ejercicios | se reserva hueco para ellos |
+| **Día de pierna** (la sesión que más fatiga acumula) | **1** ejercicio muy exigente · 4 (fuerza) o 5 ejercicios en total · máx. 2 de cuádriceps o isquios y 1 de glúteos y de pantorrillas |
 
 Si una regla impide elegir un ejercicio, la tarjeta se marca como bloqueada y explica el motivo. El panel **Control del entrenador** muestra ejercicios, ejercicios exigentes, series y duración estimada.
 

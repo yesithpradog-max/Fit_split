@@ -199,7 +199,7 @@ const Views = (() => {
   }
 
   const DEMAND_NOTES = {
-    alta: 'Mucha fatiga general: el entrenador permite como máximo 2 por sesión.',
+    alta: 'Mucha fatiga general: el entrenador permite como máximo 2 por sesión (1 en el día de pierna).',
     media: 'Fatiga moderada.',
     baja: 'Poca fatiga general: ideal para sumar volumen.'
   };

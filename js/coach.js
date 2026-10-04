@@ -141,7 +141,7 @@ const RECOMMENDED = {
     refs: ['maeo2023']
   },
   cuadriceps: {
-    ids: ['sentadilla', 'sentadilla-hack', 'extension-piernas', 'sentadilla-bulgara'],
+    ids: ['sentadilla', 'extension-piernas', 'sentadilla-hack', 'sentadilla-bulgara'],
     why: 'Sentadillas profundas y una extensión de piernas: el cuádriceps responde mejor cuando trabaja con la rodilla muy flexionada.',
     refs: ['kubo2019', 'pedrosa2022']
   },
@@ -165,7 +165,7 @@ const RECOMMENDED = {
 /* ---------------------------------------------------------------------
    Plantillas: ejercicios por grupo que propone el entrenador
    --------------------------------------------------------------------- */
-const LEG_TEMPLATE = { cuadriceps: 2, isquiotibiales: 2, gluteos: 1, pantorrillas: 1 };
+const LEG_TEMPLATE = { cuadriceps: 2, isquiotibiales: 1, gluteos: 1, pantorrillas: 1 };
 const COACH_TEMPLATES = {
   push: { pecho: 3, hombros: 2, triceps: 2 },
   pull: { espalda: 3, biceps: 2, 'deltoides-posteriores': 2 },
@@ -185,7 +185,10 @@ const COACH_LIMITS = {
   highPerSession: 2,                                     // ejercicios muy exigentes por sesión
   exercisesPerSession: { fuerza: 5, hipertrofia: 8, resistencia: 9 },
   setsPerGroupFocused: 12,                               // sesiones de 1–2 grupos
-  setsPerGroupShared: 9                                  // sesiones de 3 o más grupos
+  setsPerGroupShared: 9,                                 // sesiones de 3 o más grupos
+  /* Día de pierna: sentadillas, bisagras y zancadas cargan a la vez piernas,
+     espalda y sistema nervioso. Menos ejercicios y un solo muy exigente. */
+  legs: { sessions: ['legs', 'piernas', 'lower', 'bro-piernas'], highPerSession: 1, exercisesPerSession: { fuerza: 4, hipertrofia: 5, resistencia: 5 } }
 };
 
 const Coach = (() => {
@@ -219,10 +222,13 @@ const Coach = (() => {
 
   const uniqueIds = sel => new Set(Object.values(sel).flat());
 
-  function sessionCap(groups, goal) {
+  const isLegDay = session => !!session && COACH_LIMITS.legs.sessions.includes(session.id);
+  function sessionCap(groups, goal, session) {
     const mins = groups.reduce((s, g) => s + g.min, 0);
-    return Math.max(COACH_LIMITS.exercisesPerSession[goal], mins);
+    const base = isLegDay(session) ? COACH_LIMITS.legs.exercisesPerSession[goal] : COACH_LIMITS.exercisesPerSession[goal];
+    return Math.max(base, mins);
   }
+  const highCapOf = session => (isLegDay(session) ? COACH_LIMITS.legs.highPerSession : COACH_LIMITS.highPerSession);
 
   function groupCap(groups, g, goal) {
     const setCap = groups.length <= 2 ? COACH_LIMITS.setsPerGroupFocused : COACH_LIMITS.setsPerGroupShared;
@@ -232,7 +238,7 @@ const Coach = (() => {
   /* ¿Se puede añadir este ejercicio? Devuelve { ok, reason, code } */
   function check(m, v, d, groupId, exId, sel = WorkoutStore.getSelection(m, v, d)) {
     const goal = goalOf();
-    const { groups } = ctx(m, v, d);
+    const { session, groups } = ctx(m, v, d);
     const g = groups.find(x => x.id === groupId);
     if (!g) return { ok: false, code: 'group', reason: 'Este grupo no se entrena en esta sesión.' };
     const list = sel[groupId] || [];
@@ -248,9 +254,14 @@ const Coach = (() => {
     }
     const ids = uniqueIds(sel);
     if (ids.has(exId)) return { ok: true }; // ya elegido en otro grupo: se hace una sola vez
-    const cap = sessionCap(groups, goal);
+    const cap = sessionCap(groups, goal, session);
     if (ids.size >= cap) {
-      return { ok: false, code: 'session-full', reason: `La sesión ya tiene ${cap} ejercicios, el máximo que el entrenador permite para tu objetivo. Una sesión más larga suma fatiga sin mejorar el resultado.` };
+      return {
+        ok: false, code: 'session-full',
+        reason: isLegDay(session)
+          ? `El día de pierna ya tiene ${cap} ejercicios, el máximo que el entrenador permite: es la sesión que más fatiga acumula y más ejercicios no mejoran el resultado.`
+          : `La sesión ya tiene ${cap} ejercicios, el máximo que el entrenador permite para tu objetivo. Una sesión más larga suma fatiga sin mejorar el resultado.`
+      };
     }
     const missing = groups.filter(x => x.id !== groupId && (sel[x.id] || []).length < x.min);
     const reserve = missing.reduce((s, x) => s + x.min - (sel[x.id] || []).length, 0);
@@ -259,10 +270,13 @@ const Coach = (() => {
     }
     if (rating(exId).demand === 'alta') {
       const high = [...ids].filter(id => rating(id).demand === 'alta');
-      if (high.length >= COACH_LIMITS.highPerSession) {
+      const hc = highCapOf(session);
+      if (high.length >= hc) {
         return {
           ok: false, code: 'high',
-          reason: `Ya tienes ${high.length} ejercicios muy exigentes (${high.map(id => EXERCISE_INDEX[id].name).join(' y ')}). Un tercero dispara la fatiga y el riesgo de lesión: elige una opción en máquina, polea o con mancuernas.`
+          reason: isLegDay(session)
+            ? `Ya tienes un ejercicio muy exigente (${high.map(id => EXERCISE_INDEX[id].name).join(' y ')}). En el día de pierna el entrenador permite solo uno: un segundo dispara la fatiga y el riesgo de lesión. Elige una opción en máquina o con mancuernas.`
+            : `Ya tienes ${high.length} ejercicios muy exigentes (${high.map(id => EXERCISE_INDEX[id].name).join(' y ')}). Un tercero dispara la fatiga y el riesgo de lesión: elige una opción en máquina, polea o con mancuernas.`
         };
       }
     }
@@ -275,12 +289,13 @@ const Coach = (() => {
     const { session, groups } = ctx(m, v, d);
     const sel = WorkoutStore.getSelection(m, v, d);
     const ids = [...uniqueIds(sel)];
-    const cap = sessionCap(groups, goal);
+    const cap = sessionCap(groups, goal, session);
+    const highCap = highCapOf(session);
     const high = ids.filter(id => rating(id).demand === 'alta');
     const violations = [];
     const notes = [];
     if (ids.length > cap) violations.push(`Hay ${ids.length} ejercicios y el máximo para tu objetivo es ${cap}. Quita ${ids.length - cap}.`);
-    if (high.length > COACH_LIMITS.highPerSession) violations.push(`Hay ${high.length} ejercicios muy exigentes; el máximo es ${COACH_LIMITS.highPerSession}. Quita ${high.length - COACH_LIMITS.highPerSession} de: ${high.map(id => EXERCISE_INDEX[id].name).join(', ')}.`);
+    if (high.length > highCap) violations.push(`Hay ${high.length} ejercicios muy exigentes; el máximo es ${highCap}. Quita ${high.length - highCap} de: ${high.map(id => EXERCISE_INDEX[id].name).join(', ')}.`);
     for (const g of groups) {
       const n = (sel[g.id] || []).length;
       const gc = groupCap(groups, g, goal);
@@ -300,7 +315,7 @@ const Coach = (() => {
     const sets = items.reduce((s, ex) => s + setsFor(ex, goal), 0);
     const seconds = items.reduce((s, ex) => s + setsFor(ex, goal) * (restFor(ex, goal) + 35), 0);
     const minutes = items.length ? Math.round((seconds / 60 + 10) / 5) * 5 : 0;
-    return { session, count: ids.length, cap, high: high.length, highCap: COACH_LIMITS.highPerSession, sets, minutes, violations, notes, ok: !violations.length };
+    return { session, count: ids.length, cap, high: high.length, highCap, sets, minutes, violations, notes, ok: !violations.length };
   }
 
   /* Ejercicios de un grupo ordenados por el entrenador */
