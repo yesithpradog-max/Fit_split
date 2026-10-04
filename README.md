@@ -193,13 +193,11 @@ Todos los enlaces internos se comprueban recorriendo el sitio completo (sin enla
 
 ## Publicación en internet
 
-Es un sitio estático: se puede publicar gratis en **GitHub Pages**, **Netlify**, **Vercel** o **Cloudflare Pages**.
+Publicado con **GitHub Pages** desde la rama `main` (carpeta raíz): https://yesithpradog-max.github.io/fit_split/
 
-1. Subir la carpeta a un repositorio de GitHub.
-2. Activar GitHub Pages (Settings → Pages → rama `main`, carpeta raíz) o conectar el repositorio en Netlify / Vercel.
-3. (Opcional) Conectar un dominio propio.
-4. Para aparecer al buscar "FIT SPLIT" en Google: registrar el sitio en Google Search Console, añadir un `sitemap.xml` con la URL definitiva y solicitar la indexación.
-5. Con la URL definitiva, actualizar `og:image` en `index.html` a una dirección absoluta y añadir la etiqueta `canonical`.
+- `.nojekyll` evita que GitHub procese los archivos con Jekyll.
+- `sitemap.xml` y `robots.txt` ayudan a que Google encuentre la página; para aparecer al buscar "FIT SPLIT" hay que registrar el sitio en Google Search Console y solicitar la indexación.
+- `index.html` incluye la dirección canónica y la imagen de vista previa (`og:image`) con dirección absoluta.
 
 ---
 
