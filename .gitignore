@@ -1,1 +1,3 @@
 *.zip
+tools/node_modules
+tools/.cache

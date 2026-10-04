@@ -4,7 +4,7 @@
 
 FIT SPLIT es una plataforma web educativa e interactiva sobre entrenamiento de fuerza, hipertrofia y resistencia muscular. Guía al usuario paso a paso: define su objetivo, elige un método y una frecuencia y selecciona los ejercicios de cada día con un **entrenador integrado** que recomienda los ejercicios con mejor respaldo científico y no permite sesiones con exceso de fatiga. Al terminar, el usuario tiene un **panel personal** desde el que entrena cualquier día, modifica su rutina y mantiene su **racha**.
 
-Proyecto universitario de Ingeniería de Software. Hecho con HTML5, CSS3 y JavaScript moderno, sin backend ni frameworks. La única librería externa es **three.js** (para las animaciones 3D), incluida dentro del proyecto en `assets/vendor/`, así que no depende de ningún servidor externo.
+Proyecto universitario de Ingeniería de Software. Hecho con HTML5, CSS3 y JavaScript moderno, sin backend ni frameworks. La única librería externa es **three.js** (para las animaciones 3D), incluida dentro del proyecto en `assets/vendor/`, así que no depende de ningún servidor externo. El cuerpo anatómico procede de **BodyParts3D** (© DBCLS, CC BY 4.0).
 
 ---
 
@@ -45,9 +45,9 @@ El indicador de pasos superior es solo informativo: muestra en qué paso estás,
 
 - **Hoy toca:** la sesión del día con su rutina ordenada, duración estimada y botón para empezar (o descanso y próximo entrenamiento).
 - **Racha:** entrenamientos seguidos mientras se cumplan los días planificados de cada semana; si un día falla, se puede recuperar otro día de esa semana. Muestra la semana actual, la mejor racha y el total.
-- **Mi semana:** los 7 días con su rutina, estado (hecho / pendiente) y botones **Entrenar** y **Editar**.
-- **Dos botones directos:** «Cambiar método de entrenamiento» y «Cambiar ejercicios del método actual».
-- **Abajo:** cambiar objetivo y borrar los datos.
+- **Mi semana:** los 7 días con su rutina, estado (hecho / pendiente) y botón **Entrenar**.
+- **Solo dos botones de gestión:** «Cambiar método» (elige otro método) y «Editar método actual» (frecuencia y ejercicios del método que ya tienes).
+- El objetivo se cambia desde el paso del método y los datos se borran desde «Sobre el proyecto».
 - **Reanudar entrenamiento:** el botón animado de la cabecera solo aparece mientras hay un entrenamiento sin terminar (caduca a las 24 h).
 
 ### El entrenador (`js/coach.js`)
@@ -118,13 +118,20 @@ js/
                         de seguridad, series y descansos, autocompletado
   animations.js         ANIMACIONES: patrones de movimiento, cinemática inversa
                         y versión 2D (SVG)
-  animations3d.js       ANIMACIONES 3D: maniquí de cristal con músculos, equipamiento
-                        y cámara giratoria (three.js)
+  anatomy3d.js          CUERPO 3D: carga el modelo anatómico (sin piel), esqueleto
+                        animable y resaltado de músculos
+  biomech.js            BIOMECÁNICA: cinemática inversa con las longitudes reales,
+                        escápulas, antebrazos, manos, pies y centro de masas
+  poses3d.js            TÉCNICA 3D: postura inicial y de transición de cada ejercicio
+  props3d.js            EQUIPAMIENTO 3D a escala real (barras, bancos, poleas, máquinas)
+  animations3d.js       ANIMACIONES 3D: escena, cámara giratoria y miniaturas
   ui.js                 INTERFAZ: componentes (tarjetas, pestañas, diálogos, avisos)
   views.js              INTERFAZ: una función por pantalla
   app.js                INTERFAZ: enrutador, cabecera y delegación de eventos
 assets/
   vendor/three.min.js   three.js r149 (licencia MIT, ver three-LICENSE.txt)
+  anatomy/anatomy-data.js  Modelo anatómico comprimido (BodyParts3D, CC BY 4.0)
+tools/                  Scripts de Node que generan el modelo anatómico (no se publican)
   icons/favicon.svg
   images/og-image.png   Imagen al compartir el enlace
 ```
@@ -151,20 +158,19 @@ Cuando cambian los datos (por ejemplo, al elegir un ejercicio), `WorkoutStore` a
 
 Cada ejercicio usa un patrón de movimiento (`bench`, `squat`, `curl`, `rdl`...). El patrón construye el esqueleto para una posición `t` entre 0 (posición inicial) y 1 (punto de transición). Manos y pies se colocan donde deben estar y codos y rodillas se calculan con **cinemática inversa de dos segmentos** (ley del coseno). Una línea de tiempo recorre las 5 fases del movimiento y la excéntrica dura más que la concéntrica.
 
-### Vista 3D (`js/animations3d.js`)
+### Vista 3D: cuerpo anatómico real
 
-- El esqueleto del patrón se convierte a 3D: en la vista lateral se añade la anchura del cuerpo; en las vistas frontales la profundidad se reconstruye a partir de la longitud real de cada segmento.
-- El maniquí se construye con superficies anatómicas (torso, cuello, cabeza, brazos, manos, piernas y pies) y más de 60 vientres musculares con textura de fibras. Los músculos que trabaja el ejercicio se iluminan con el color de su sesión.
-- La piel es de **cristal**: un volumen semitransparente con brillo en los bordes (efecto Fresnel). Se dibuja solo la superficie exterior para que no aparezcan costuras internas.
-- El equipamiento (barras, mancuernas, poleas, bancos, máquinas) se genera a partir del mismo patrón.
+- **Modelo:** el cuerpo es un *écorché* (un cuerpo humano sin piel) construido con las mallas reales de **BodyParts3D** (© The Database Center for Life Science, licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.es)): músculos, tendones, huesos y cartílagos de todo el cuerpo, incluida la cabeza. Los músculos que faltaban en esa base (dorsal ancho, recto del abdomen, trapecio medio e inferior y los músculos de la cara) se generaron siguiendo la superficie del esqueleto. Los scripts están en `tools/` (`anatomy-extract.mjs`, `anatomy-generate.mjs`, `anatomy-build.mjs`).
+- **Esqueleto animable:** tronco, cuello, cabeza, escápulas, brazo, antebrazo con giro (pronación y supinación), mano, dedos, muslo, pierna, pie y dedos del pie. Cada vértice se asocia a los huesos que le corresponden anatómicamente.
+- **Técnica (`js/poses3d.js`):** cada patrón describe la posición inicial y el punto de transición con criterios de entrenador: en los ejercicios de pie el centro de masas (cuerpo + carga) queda sobre el mediopié; la barra del peso muerto y del rumano baja rozando las piernas; los brazos que deben estar extendidos lo están de verdad; rodillas en la dirección de los pies; espalda neutra; trayectoria en "J" en el press de banca; profundidades y ángulos dentro de rangos seguros.
+- **Validación:** un script recorre los 72 ejercicios y comprueba que manos y pies llegan a su sitio, que codos, rodillas y tobillos no superan rangos seguros y que nada atraviesa el suelo.
 - **Cámara:** arrastrar para girar, rueda o dos dedos para acercar, flechas del teclado, y botones 3/4, Lateral, Frontal, Espalda y Arriba.
-- Las miniaturas de las tarjetas se renderizan en 3D una sola vez y se guardan en memoria.
-- Si el navegador no admite WebGL, se usa automáticamente la animación 2D en SVG.
+- El modelo (unos 3,4 MB) se carga solo cuando se abre una animación o una miniatura. Si el navegador no admite WebGL, se usa automáticamente la animación 2D en SVG.
 
 ## Cómo ampliar el proyecto
 
 - **Nuevo método:** añadir un objeto a `METHODS` en `js/data.js` con sus variantes (`schedule` indica la sesión de cada día).
-- **Nuevo ejercicio:** añadir un objeto a `EXERCISES` en `js/exercises.js` con un patrón de animación existente, y su exigencia y valoración en `COACH_RATINGS` (`js/coach.js`). Para destacarlo, añadir su id a `RECOMMENDED`.
+- **Nuevo ejercicio:** añadir un objeto a `EXERCISES` en `js/exercises.js` con un patrón de animación existente (2D en `animations.js` y 3D en `poses3d.js`), y su exigencia y valoración en `COACH_RATINGS` (`js/coach.js`). Para destacarlo, añadir su id a `RECOMMENDED`.
 - **Nuevo tema educativo:** añadir un objeto a `LEARN_TOPICS` en `js/learn.js`.
 
 Las pantallas se generan solas a partir de los datos.

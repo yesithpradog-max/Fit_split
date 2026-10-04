@@ -135,7 +135,7 @@ const Views = (() => {
     return `<div class="anim-card">
       <div class="anim-head">
         <span class="anim-view">${icon(use3D() ? 'cube' : 'eye')}${use3D() ? Animations3D.viewLabel(ex) : Animations.viewLabel(ex)}</span>
-        <span class="anim-legend"><span><i class="lg-p"></i>Trabaja</span><span><i class="lg-s"></i>Ayuda</span><span><i class="lg-b"></i>Otros músculos</span></span>
+        <span class="anim-legend${use3D() ? ' is-anatomy' : ''}"><span><i class="lg-p"></i>Trabaja</span><span><i class="lg-s"></i>Ayuda</span><span><i class="lg-b"></i>Otros músculos</span></span>
       </div>
       <div class="anim-stage" data-stage></div>
       <div class="anim-controls">
@@ -473,7 +473,7 @@ const Views = (() => {
         <p class="muted">${st.trainedToday ? 'Buen trabajo. Ahora toca comer bien y descansar: ahí es donde el músculo se adapta.' : 'La adaptación ocurre durante la recuperación. Aprovecha para dormir bien y cuidar la alimentación.'}</p>
         ${nd ? `<div class="today-next tone-${ns.tone}"><p>Próximo: <strong>${nd.name} · <span class="tone-text">${esc(ns.name)}</span></strong></p>
           ${p.complete ? `<button type="button" class="btn btn-ghost btn-sm" data-action="start-day" data-d="${nd.id}">${icon('play')}<span>Adelantarlo hoy</span></button>`
-            : `<a class="btn btn-ghost btn-sm" href="#/plan/dia/${nd.id}">Completar sus ejercicios</a>`}</div>` : ''}
+            : '<span class="muted small">Faltan ejercicios: usa «Editar método actual».</span>'}</div>` : ''}
       </section>`;
     }
     const p = Planner.sessionProgress(plan.m, plan.v, today.id);
@@ -481,8 +481,7 @@ const Views = (() => {
       return `<section class="today-card tone-${s.tone}" aria-labelledby="today-title">
         <p class="eyebrow">Hoy · ${today.name}</p>
         <h2 id="today-title">Hoy toca <span class="tone-text">${esc(s.name)}</span></h2>
-        <p class="muted">Este día aún no tiene una rutina válida.${p.coach && p.coach.violations.length ? ' El entrenador ha detectado límites superados.' : ''}</p>
-        <a class="btn btn-primary btn-lg" href="#/plan/dia/${today.id}">Completar ejercicios${icon('arrow-right')}</a>
+        <p class="muted">Este día aún no tiene una rutina válida${p.coach && p.coach.violations.length ? ' (el entrenador ha detectado límites superados)' : ''}. Complétalo con el botón «Editar método actual».</p>
       </section>`;
     }
     return `<section class="today-card tone-${s.tone}" aria-labelledby="today-title">
@@ -492,7 +491,6 @@ const Views = (() => {
       ${routinePreview(plan, today.id)}
       <div class="btn-row">
         <button type="button" class="btn btn-primary btn-lg btn-pulse" data-action="start-day" data-d="${today.id}">${icon('play')}<span>Empezar entrenamiento</span></button>
-        <a class="btn btn-ghost" href="#/plan/dia/${today.id}">${icon('edit')}<span>Editar</span></a>
       </div>
     </section>`;
   }
@@ -516,7 +514,6 @@ const Views = (() => {
           : `<p class="wk-meta wk-warn">${icon('alert')}${p.coach && p.coach.violations.length ? 'Supera los límites del entrenador' : 'Faltan ejercicios'}</p>`}
         <div class="wk-actions">
           ${p.complete ? `<button type="button" class="btn btn-primary btn-sm" data-action="start-day" data-d="${day.id}">${icon('play')}<span>Entrenar</span></button>` : ''}
-          <a class="btn btn-ghost btn-sm" href="#/plan/dia/${day.id}">${p.complete ? `${icon('edit')}<span>Editar</span>` : '<span>Completar</span>'}</a>
         </div>
       </article>`;
     }).join('')}</div>`;
@@ -527,7 +524,6 @@ const Views = (() => {
     const goal = GOALS[WorkoutStore.getGoal()];
     const st = WorkoutStore.getStreak();
     const topic = id => LEARN_TOPICS.find(t => t.id === id);
-    const editDay = plan.variant.schedule[st.todayId] ? st.todayId : Planner.trainingDays(plan.variant)[0].id;
     const html = `
       <section class="dash dash-me">
         <div class="container">
@@ -544,8 +540,8 @@ const Views = (() => {
             </ul>
           </div>
           <div class="me-actions">
-            <a class="btn btn-secondary" href="#/plan/metodo">${icon('split')}<span>Cambiar método de entrenamiento</span></a>
-            <a class="btn btn-secondary" href="#/plan/dia/${editDay}">${icon('edit')}<span>Cambiar ejercicios del método actual</span></a>
+            <a class="btn btn-secondary" href="#/plan/metodo">${icon('split')}<span>Cambiar método</span></a>
+            <a class="btn btn-secondary" href="#/plan/frecuencia">${icon('edit')}<span>Editar método actual</span></a>
           </div>
           <div class="me-grid">
             ${todayCard(plan, st)}
@@ -560,10 +556,6 @@ const Views = (() => {
                 <a class="explore-tile" href="#/sobre">${icon('info')}<span><strong>Sobre FIT SPLIT</strong><small>El proyecto</small></span></a>
               </div>` }
           ])}
-          <div class="me-foot">
-            <a class="text-link" href="#/plan/objetivo">${icon('target')}<span>Cambiar objetivo (${esc(goal.name.toLowerCase())})</span></a>
-            <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="reset-all">${icon('trash')}<span>Borrar mis datos</span></button>
-          </div>
         </div>
       </section>`;
     return {
@@ -575,10 +567,6 @@ const Views = (() => {
         async abandon() {
           const ok = await UI.confirm({ title: 'Descartar entrenamiento', text: 'Se perderá el progreso del entrenamiento en curso y no contará para la racha. Tu rutina se mantiene.', confirmLabel: 'Descartar', danger: true });
           if (ok) { WorkoutStore.abandonWorkout(); UI.toast('Entrenamiento descartado.'); }
-        },
-        async 'reset-all'() {
-          const ok = await UI.confirm({ title: 'Borrar mis datos', text: 'Se borrarán tu objetivo, tu plan, todas tus rutinas, tu historial y tu racha. No se puede deshacer.', confirmLabel: 'Borrar todo', danger: true });
-          if (ok) { WorkoutStore.resetAll(); go('#/plan/objetivo'); }
         }
       }
     };
@@ -685,6 +673,7 @@ const Views = (() => {
           <div class="step-head">
             <h1 tabindex="-1">Elige un método de entrenamiento</h1>
             <p class="lead">Un método decide qué músculos entrenas cada día. Toca uno para ver cómo funciona; ninguno es el mejor para todo el mundo.</p>
+            ${WorkoutStore.isConfigured() ? `<p class="muted">Tu objetivo: <strong>${esc(GOALS[WorkoutStore.getGoal()].name)}</strong> · <a href="#/plan/objetivo">cambiar objetivo</a></p>` : ''}
           </div>
           <div class="method-picker">
             <div class="method-options" role="group" aria-label="Métodos">
@@ -1520,7 +1509,7 @@ const Views = (() => {
       ['Datos', 'data.js · exercises.js · learn.js', 'Métodos, sesiones, ejercicios, recomendados y contenido educativo como objetos de JavaScript.'],
       ['Lógica', 'workouts.js', 'Planner calcula sesiones y el orden automático de la rutina. WorkoutStore guarda el plan, la rutina, el entrenamiento en curso y la racha en localStorage.'],
       ['Entrenador', 'coach.js', 'Valoración de cada ejercicio, recomendados con estudios, límites de seguridad por sesión y autocompletado.'],
-      ['Animaciones', 'animations.js · animations3d.js', `${Animations.presets.length} patrones de movimiento con cinemática inversa. Se muestran en 3D con three.js (cuerpo de cristal con músculos, cámara giratoria) y en 2D si el navegador no admite WebGL.`],
+      ['Animaciones', 'anatomy3d.js · biomech.js · poses3d.js · animations3d.js', `${Animations.presets.length} patrones de movimiento con cinemática inversa. Se muestran en 3D sobre un cuerpo anatómico real sin piel (BodyParts3D), con la técnica revisada ejercicio a ejercicio y cámara giratoria, y en 2D si el navegador no admite WebGL.`],
       ['Interfaz', 'ui.js · views.js · app.js', 'Componentes reutilizables, vistas por paso y un enrutador por hash con botón de retroceso.'],
       ['Estilos', 'styles.css · responsive.css', 'Diseño oscuro con variables CSS, adaptado a computador, tablet y teléfono.']
     ];
@@ -1543,14 +1532,34 @@ const Views = (() => {
               { id: 'arquitectura', label: 'Cómo está construido', html: `<p>Aplicación web de una sola página hecha con HTML5, CSS3 y JavaScript moderno, sin backend ni dependencias.</p>
                 <ol class="arch">${layers.map(([n, f, d]) => `<li><strong>${n}</strong><code>${f}</code><span>${d}</span></li>`).join('')}</ol>` }
             ])}</div>
-            <div class="side-box">
-              <h2>${icon('shield')}Aviso importante</h2>
-              <p class="muted">El contenido es educativo y general. No sustituye la valoración de un profesional sanitario, de la nutrición o del ejercicio. Si tienes una lesión, una condición médica o dudas, consulta antes de entrenar.</p>
+            <div class="about-side">
+              <div class="side-box">
+                <h2>${icon('shield')}Aviso importante</h2>
+                <p class="muted">El contenido es educativo y general. No sustituye la valoración de un profesional sanitario, de la nutrición o del ejercicio. Si tienes una lesión, una condición médica o dudas, consulta antes de entrenar.</p>
+              </div>
+              <div class="side-box">
+                <h2>${icon('body')}Modelo anatómico</h2>
+                <p class="muted">Las animaciones 3D usan geometría real de <strong>BodyParts3D</strong>, © The Database Center for Life Science, con licencia <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>. FIT SPLIT la simplificó, le añadió un esqueleto animable y modeló los músculos que faltaban en el conjunto de datos.</p>
+              </div>
+              <div class="side-box">
+                <h2>${icon('trash')}Tus datos</h2>
+                <p class="muted">Tu plan, tus rutinas y tu racha se guardan solo en este navegador.</p>
+                <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="reset-all">${icon('trash')}<span>Borrar mis datos</span></button>
+              </div>
             </div>
           </div>
         </div>
       </section>`;
-    return { title: 'Sobre FIT SPLIT', html };
+    return {
+      title: 'Sobre FIT SPLIT',
+      html,
+      actions: {
+        async 'reset-all'() {
+          const ok = await UI.confirm({ title: 'Borrar mis datos', text: 'Se borrarán tu objetivo, tu plan, todas tus rutinas, tu historial y tu racha. No se puede deshacer.', confirmLabel: 'Borrar todo', danger: true });
+          if (ok) { WorkoutStore.resetAll(); go('#/plan/objetivo'); }
+        }
+      }
+    };
   }
 
   function notFound() {

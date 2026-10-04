@@ -1029,8 +1029,20 @@ details.rec-note[open] summary::after { content: 'Ocultar'; }
 }
 .fx3d-view:hover { color: var(--text); border-color: var(--text-3); }
 .fx3d-view[aria-pressed="true"] { color: var(--bg); background: var(--text); border-color: var(--text); }
-.fx3d-hint { position: absolute; left: 0; right: 0; bottom: .45rem; margin: 0; text-align: center; font-size: .7rem; color: var(--text-3); pointer-events: none; }
+.fx3d-hint { position: absolute; left: 0; right: 0; bottom: 1.15rem; margin: 0; text-align: center; font-size: .7rem; color: var(--text-3); pointer-events: none; }
+.fx3d-loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: .6rem; margin: 0; font-size: .8rem; color: var(--text-2); }
+.fx3d.is-loading .fx3d-loading { display: flex; }
+.fx3d.is-loading .fx3d-views, .fx3d.is-loading .fx3d-hint { visibility: hidden; }
+.fx3d-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--text-2); animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .fx3d-spinner { animation: none; } }
+.fx3d-credit { position: absolute; right: .55rem; bottom: .3rem; margin: 0; font-size: .6rem; color: var(--text-3); opacity: .75; pointer-events: none; }
+.anim-legend.is-anatomy i { background: #f04a45; }
+.anim-legend.is-anatomy i.lg-s { background: #c23a42; }
+.anim-legend.is-anatomy i.lg-b { background: #8f2a33; }
 .fx-thumb3d { display: block; width: 100%; height: 100%; }
 .fx-thumb3d .fx { width: 100%; height: 100%; display: block; }
 .fx-img { display: block; width: 100%; height: 100%; object-fit: cover; animation: fadeIn .35s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.about-side { display: grid; gap: 1rem; align-content: start; min-width: 0; }
