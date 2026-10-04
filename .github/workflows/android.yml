@@ -57,11 +57,15 @@ jobs:
 
       - name: Comprobar el APK (firma y datos del paquete)
         run: |
+          APK=android-app/android/app/build/outputs/apk/release/app-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          echo "build-tools: $BT"
-          "$BT/apksigner" verify --verbose --print-certs android-app/android/app/build/outputs/apk/release/app-release.apk
-          "$BT/aapt2" dump badging android-app/android/app/build/outputs/apk/release/app-release.apk | head -20
-          "$BT/zipalign" -c -v 4 android-app/android/app/build/outputs/apk/release/app-release.apk | tail -2
+          {
+            echo "build-tools: $BT"
+            "$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1
+            "$BT/aapt2" dump badging "$APK" 2>&1 | head -25
+            "$BT/zipalign" -c -v 4 "$APK" 2>&1 | tail -2
+            sha256sum "$APK"
+          } | tee verificacion.txt
 
       - name: Publicar el APK
         env:
@@ -73,4 +77,4 @@ jobs:
             gh release create android-latest --title "FIT SPLIT para Android" \
               --notes "App de Android de FIT SPLIT. Se actualiza sola cada vez que cambia la web. Descarga fit-split.apk e instálalo (permite «Instalar apps desconocidas» si el teléfono lo pide)."
           fi
-          gh release upload android-latest fit-split.apk --clobber
+          gh release upload android-latest fit-split.apk verificacion.txt --clobber
