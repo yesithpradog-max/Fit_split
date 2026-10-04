@@ -193,7 +193,7 @@ Todos los enlaces internos se comprueban recorriendo el sitio completo (sin enla
 
 ## Publicación en internet
 
-Publicado con **GitHub Pages** desde la rama `main` (carpeta raíz): https://yesithpradog-max.github.io/fit_split/
+Publicado con **GitHub Pages** desde la rama `main` (carpeta raíz): https://yesithpradog-max.github.io/Fit_split/
 
 - `.nojekyll` evita que GitHub procese los archivos con Jekyll.
 - `sitemap.xml` y `robots.txt` ayudan a que Google encuentre la página; para aparecer al buscar "FIT SPLIT" hay que registrar el sitio en Google Search Console y solicitar la indexación.

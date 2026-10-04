@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://yesithpradog-max.github.io/fit_split/sitemap.xml
+Sitemap: https://yesithpradog-max.github.io/Fit_split/sitemap.xml
