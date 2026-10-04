@@ -68,60 +68,87 @@ const Animations = (() => {
     return { a, u, front, back: [-front[0], -front[1]] };
   }
 
+  /* ------------------------ Registro para la vista 3D ------------------------
+     Mientras REC es una lista, cada elemento de escena o equipamiento se
+     anota también como un objeto (tipo + coordenadas). animations3d.js usa
+     esa lista para construir el mismo equipamiento en tres dimensiones. */
+  let REC = null, recDepth = 0;
+  const note = prim => { if (REC && recDepth === 0) REC.push(prim); };
+  function rec(prim, draw) {
+    note(prim);
+    recDepth += 1;
+    try { return draw(); } finally { recDepth -= 1; }
+  }
+  function capture(fn) {
+    const prev = REC, prevDepth = recDepth;
+    REC = []; recDepth = 0;
+    try { const out = fn(); return { out, prims: REC }; } finally { REC = prev; recDepth = prevDepth; }
+  }
+
   /* --------------------------- Primitivas SVG --------------------------- */
   const f = n => Math.round(n * 10) / 10;
-  const line = (a, b, cls, w) =>
-    `<line class="${cls}" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"${w ? ` stroke-width="${w}"` : ''}/>`;
-  const circle = (c, r, cls) => `<circle class="${cls}" cx="${f(c[0])}" cy="${f(c[1])}" r="${r}"/>`;
-  const rect = (x, y, w, h, cls, r = 3) =>
-    `<rect class="${cls}" x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="${r}"/>`;
+  const line = (a, b, cls, w) => {
+    note({ type: 'line', a, b, cls, w: w || 2 });
+    return `<line class="${cls}" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"${w ? ` stroke-width="${w}"` : ''}/>`;
+  };
+  const circle = (c, r, cls) => {
+    note({ type: 'circle', c, r, cls });
+    return `<circle class="${cls}" cx="${f(c[0])}" cy="${f(c[1])}" r="${r}"/>`;
+  };
+  const rect = (x, y, w, h, cls, r = 3) => {
+    note({ type: 'rect', x, y, w, h, cls });
+    return `<rect class="${cls}" x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="${r}"/>`;
+  };
   const poly = (pts, cls) => `<polygon class="${cls}" points="${pts.map(p => f(p[0]) + ',' + f(p[1])).join(' ')}"/>`;
   const ellipse = (c, rx, ry, cls) => `<ellipse class="${cls}" cx="${f(c[0])}" cy="${f(c[1])}" rx="${rx}" ry="${ry}"/>`;
 
   /* --------------------------- Equipamiento --------------------------- */
   const EQ = {
-    plate: (c, r = 24) => circle(c, r, 'fx-plate') + circle(c, Math.max(4, Math.round(r * 0.22)), 'fx-hub'),
-    dbEnd: (c, r = 11) => circle(c, r, 'fx-plate') + circle(c, 3.5, 'fx-hub'),
+    plate: (c, r = 24) => rec({ type: 'plate', c, r }, () => circle(c, r, 'fx-plate') + circle(c, Math.max(4, Math.round(r * 0.22)), 'fx-hub')),
+    dbEnd: (c, r = 11) => rec({ type: 'db-end', c, r }, () => circle(c, r, 'fx-plate') + circle(c, 3.5, 'fx-hub')),
     dbSide(c, a, len = 30) {
-      const u = unit(a), n = [-u[1], u[0]];
-      const p1 = add(c, mul(u, -len / 2)), p2 = add(c, mul(u, len / 2));
-      return line(p1, p2, 'fx-bar', 5) +
-        line(add(p1, mul(n, -10)), add(p1, mul(n, 10)), 'fx-plate-bar', 8) +
-        line(add(p2, mul(n, -10)), add(p2, mul(n, 10)), 'fx-plate-bar', 8);
+      return rec({ type: 'db-side', c, a, len }, () => {
+        const u = unit(a), n = [-u[1], u[0]];
+        const p1 = add(c, mul(u, -len / 2)), p2 = add(c, mul(u, len / 2));
+        return line(p1, p2, 'fx-bar', 5) +
+          line(add(p1, mul(n, -10)), add(p1, mul(n, 10)), 'fx-plate-bar', 8) +
+          line(add(p2, mul(n, -10)), add(p2, mul(n, 10)), 'fx-plate-bar', 8);
+      });
     },
-    cable: (from, to) => line(from, to, 'fx-cable') + circle(from, 6, 'fx-pulley'),
-    grip: c => circle(c, 4.5, 'fx-grip'),
-    handle: (c, a = 90, len = 18) => {
+    cable: (from, to) => rec({ type: 'cable', from, to }, () => line(from, to, 'fx-cable') + circle(from, 6, 'fx-pulley')),
+    grip: c => rec({ type: 'grip', c }, () => circle(c, 4.5, 'fx-grip')),
+    handle: (c, a = 90, len = 18) => rec({ type: 'handle', c, a, len }, () => {
       const u = unit(a);
       return line(add(c, mul(u, -len / 2)), add(c, mul(u, len / 2)), 'fx-bar', 6);
-    },
-    pad: (c, r = 8) => circle(c, r, 'fx-pad-dyn')
+    }),
+    pad: (c, r = 8) => rec({ type: 'roller', c, r }, () => circle(c, r, 'fx-pad-dyn'))
   };
 
   /* ------------------------ Elementos de escena ------------------------ */
   const SC = {
-    floor: () => line([-60, FLOOR], [460, FLOOR], 'fx-floor', 2),
-    bench: (x1, x2, top) =>
+    floor: () => rec({ type: 'floor' }, () => line([-60, FLOOR], [460, FLOOR], 'fx-floor', 2)),
+    bench: (x1, x2, top) => rec({ type: 'bench', x1, x2, top }, () =>
       rect(x1, top, x2 - x1, 10, 'fx-pad', 4) +
       line([x1 + 16, top + 10], [x1 + 16, FLOOR], 'fx-frame', 6) +
-      line([x2 - 16, top + 10], [x2 - 16, FLOOR], 'fx-frame', 6),
-    seat: (x1, x2, top) =>
+      line([x2 - 16, top + 10], [x2 - 16, FLOOR], 'fx-frame', 6)),
+    seat: (x1, x2, top) => rec({ type: 'seat', x1, x2, top }, () =>
       rect(x1, top, x2 - x1, 10, 'fx-pad', 4) +
       line([(x1 + x2) / 2, top + 10], [(x1 + x2) / 2, FLOOR], 'fx-frame', 7) +
-      line([(x1 + x2) / 2 - 26, FLOOR - 2], [(x1 + x2) / 2 + 26, FLOOR - 2], 'fx-frame', 5),
+      line([(x1 + x2) / 2 - 26, FLOOR - 2], [(x1 + x2) / 2 + 26, FLOOR - 2], 'fx-frame', 5)),
     /* Respaldo paralelo al torso, desde t0 hasta t1 (fracciones del torso) */
     backPad(hip, sh, t0 = -0.1, t1 = 1.2, off = 15) {
       const F = frame(hip, sh);
       const base = add(hip, mul(F.back, off));
-      return line(add(base, mul(F.u, L.T * t0)), add(base, mul(F.u, L.T * t1)), 'fx-pad', 11);
+      const a = add(base, mul(F.u, L.T * t0)), b = add(base, mul(F.u, L.T * t1));
+      return rec({ type: 'pad', a, b, w: 11 }, () => line(a, b, 'fx-pad', 11));
     },
-    post: (x, y1, y2 = FLOOR, w = 7) => line([x, y1], [x, y2], 'fx-frame', w),
-    stack: (x, y, w = 34, h = FLOOR - y) => {
+    post: (x, y1, y2 = FLOOR, w = 7) => rec({ type: 'post', x, y1, y2, w }, () => line([x, y1], [x, y2], 'fx-frame', w)),
+    stack: (x, y, w = 34, h = FLOOR - y) => rec({ type: 'stack', x, y, w, h }, () => {
       let s = rect(x, y, w, h, 'fx-stack', 3);
       for (let yy = y + 12; yy < y + h - 4; yy += 12) s += line([x + 3, yy], [x + w - 3, yy], 'fx-stack-line', 1);
       return s;
-    },
-    rack: x => line([x, 70], [x, FLOOR], 'fx-frame', 6) + line([x, 104], [x + 14, 104], 'fx-frame', 5)
+    }),
+    rack: x => rec({ type: 'rack', x }, () => line([x, 70], [x, FLOOR], 'fx-frame', 6) + line([x, 104], [x + 14, 104], 'fx-frame', 5))
   };
 
   /* ---------------------------------------------------------------------
@@ -1552,6 +1579,19 @@ const Animations = (() => {
     thumbnail,
     phases,
     viewLabel: ex => VIEW_LABELS[resolve(ex).view],
-    presets: Object.keys(PRESETS)
+    presets: Object.keys(PRESETS),
+    /* Acceso interno para el motor 3D (animations3d.js) */
+    _internal: {
+      FLOOR, L, ease,
+      resolve,
+      /* Crea el preset de nuevo anotando la escena como objetos */
+      capturePreset(ex) {
+        const factory = PRESETS[ex.anim.preset];
+        const { out, prims } = capture(() => factory(ex.anim.opts || {}));
+        return { preset: out, scene: prims };
+      },
+      capture,
+      frame, unit, pt, ang
+    }
   };
 })();

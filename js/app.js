@@ -44,7 +44,12 @@
   let depth = 0;          // pasos de navegación dentro de la aplicación
   let replacing = false;  // una redirección no cuenta como paso
 
+  /* Un ancla que no es una ruta (por ejemplo #main, "Saltar al contenido")
+     no cambia de pantalla */
+  const isRoute = () => !location.hash || location.hash.startsWith('#/');
+
   function parseHash() {
+    if (!isRoute()) return current ? current.path : '/';
     const raw = decodeURIComponent(location.hash.replace(/^#/, '')) || '/';
     const [path] = raw.split('?');
     return path.replace(/\/+$/, '') || '/';
@@ -137,6 +142,11 @@
   });
 
   window.addEventListener('hashchange', () => {
+    if (!isRoute()) {
+      const target = document.getElementById(location.hash.slice(1));
+      if (target) target.focus();
+      return;
+    }
     if (replacing) replacing = false;
     else depth += 1;
     render();

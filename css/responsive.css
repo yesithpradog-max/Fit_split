@@ -74,16 +74,16 @@
   .stepper li:not(.is-current) .step-text { display: none; }
   .stepper li:not(.is-current) { justify-content: center; }
   .player-nav [data-action="prev-exercise"] { flex: none; padding-inline: .9rem; }
+  .fx3d-view { min-height: 24px; padding: .1rem .45rem; font-size: .66rem; }
+  .fx3d-hint { display: none; }
   .player-nav [data-action="prev-exercise"] span { display: none; }
   #next-slot { flex: 1; min-width: 0; }
   #next-slot .btn { width: 100%; }
   .info-list > div { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
   .group-pane { padding: 1rem; }
   .counter { min-width: 0; width: 100%; }
-  .settings-grid { grid-template-columns: minmax(0, 1fr); }
-  .setting-card { grid-template-columns: auto minmax(0, 1fr); }
-  .setting-card > .btn { grid-column: 1 / -1; justify-self: start; }
   .freq-cta { justify-content: stretch; }
+  .me-actions .btn { flex: 1 1 100%; }
   .freq-cta .btn { flex: 1 1 100%; }
   .coach-meters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .today-card { padding: 1.1rem; }

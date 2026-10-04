@@ -4,7 +4,7 @@
 
 FIT SPLIT es una plataforma web educativa e interactiva sobre entrenamiento de fuerza, hipertrofia y resistencia muscular. Guía al usuario paso a paso: define su objetivo, elige un método y una frecuencia y selecciona los ejercicios de cada día con un **entrenador integrado** que recomienda los ejercicios con mejor respaldo científico y no permite sesiones con exceso de fatiga. Al terminar, el usuario tiene un **panel personal** desde el que entrena cualquier día, modifica su rutina y mantiene su **racha**.
 
-Proyecto universitario de Ingeniería de Software. Hecho con HTML5, CSS3 y JavaScript moderno, sin backend, sin frameworks y sin dependencias que instalar.
+Proyecto universitario de Ingeniería de Software. Hecho con HTML5, CSS3 y JavaScript moderno, sin backend ni frameworks. La única librería externa es **three.js** (para las animaciones 3D), incluida dentro del proyecto en `assets/vendor/`, así que no depende de ningún servidor externo.
 
 ---
 
@@ -46,7 +46,8 @@ El indicador de pasos superior es solo informativo: muestra en qué paso estás,
 - **Hoy toca:** la sesión del día con su rutina ordenada, duración estimada y botón para empezar (o descanso y próximo entrenamiento).
 - **Racha:** entrenamientos seguidos mientras se cumplan los días planificados de cada semana; si un día falla, se puede recuperar otro día de esa semana. Muestra la semana actual, la mejor racha y el total.
 - **Mi semana:** los 7 días con su rutina, estado (hecho / pendiente) y botones **Entrenar** y **Editar**.
-- **Mi plan:** cambiar objetivo, método o frecuencia, modificar la rutina o borrar los datos.
+- **Dos botones directos:** «Cambiar método de entrenamiento» y «Cambiar ejercicios del método actual».
+- **Abajo:** cambiar objetivo y borrar los datos.
 - **Reanudar entrenamiento:** el botón animado de la cabecera solo aparece mientras hay un entrenamiento sin terminar (caduca a las 24 h).
 
 ### El entrenador (`js/coach.js`)
@@ -115,12 +116,15 @@ js/
                         (objetivo, plan, rutina, entrenamiento en curso, historial y racha)
   coach.js              ENTRENADOR: valoraciones, recomendados con estudios, límites
                         de seguridad, series y descansos, autocompletado
-  animations.js         ANIMACIONES: cuerpo transparente con músculos, cinemática
-                        inversa y patrones de movimiento
+  animations.js         ANIMACIONES: patrones de movimiento, cinemática inversa
+                        y versión 2D (SVG)
+  animations3d.js       ANIMACIONES 3D: maniquí de cristal con músculos, equipamiento
+                        y cámara giratoria (three.js)
   ui.js                 INTERFAZ: componentes (tarjetas, pestañas, diálogos, avisos)
   views.js              INTERFAZ: una función por pantalla
   app.js                INTERFAZ: enrutador, cabecera y delegación de eventos
 assets/
+  vendor/three.min.js   three.js r149 (licencia MIT, ver three-LICENSE.txt)
   icons/favicon.svg
   images/og-image.png   Imagen al compartir el enlace
 ```
@@ -145,11 +149,17 @@ Cuando cambian los datos (por ejemplo, al elegir un ejercicio), `WorkoutStore` a
 
 ## Cómo funcionan las animaciones
 
-Cada ejercicio usa un patrón de movimiento (`bench`, `squat`, `curl`, `rdl`...). El patrón construye el esqueleto para una posición `t` entre 0 (posición inicial) y 1 (punto de transición). Las manos y los pies se colocan donde deben estar y los codos y las rodillas se calculan con **cinemática inversa de dos segmentos** (ley del coseno).
+Cada ejercicio usa un patrón de movimiento (`bench`, `squat`, `curl`, `rdl`...). El patrón construye el esqueleto para una posición `t` entre 0 (posición inicial) y 1 (punto de transición). Manos y pies se colocan donde deben estar y codos y rodillas se calculan con **cinemática inversa de dos segmentos** (ley del coseno). Una línea de tiempo recorre las 5 fases del movimiento y la excéntrica dura más que la concéntrica.
 
-Sobre el esqueleto se dibuja un **cuerpo transparente**: un contorno claro con relleno oscuro translúcido, los huesos de forma tenue y **todos los músculos** como vientres musculares. Los músculos que trabaja el ejercicio se iluminan con el color de su tipo de sesión (brillantes los principales, suaves los secundarios). Una línea de tiempo recorre las 5 fases del movimiento y la excéntrica dura más que la concéntrica.
+### Vista 3D (`js/animations3d.js`)
 
----
+- El esqueleto del patrón se convierte a 3D: en la vista lateral se añade la anchura del cuerpo; en las vistas frontales la profundidad se reconstruye a partir de la longitud real de cada segmento.
+- El maniquí se construye con superficies anatómicas (torso, cuello, cabeza, brazos, manos, piernas y pies) y más de 60 vientres musculares con textura de fibras. Los músculos que trabaja el ejercicio se iluminan con el color de su sesión.
+- La piel es de **cristal**: un volumen semitransparente con brillo en los bordes (efecto Fresnel). Se dibuja solo la superficie exterior para que no aparezcan costuras internas.
+- El equipamiento (barras, mancuernas, poleas, bancos, máquinas) se genera a partir del mismo patrón.
+- **Cámara:** arrastrar para girar, rueda o dos dedos para acercar, flechas del teclado, y botones 3/4, Lateral, Frontal, Espalda y Arriba.
+- Las miniaturas de las tarjetas se renderizan en 3D una sola vez y se guardan en memoria.
+- Si el navegador no admite WebGL, se usa automáticamente la animación 2D en SVG.
 
 ## Cómo ampliar el proyecto
 
@@ -169,6 +179,10 @@ Las pantallas se generan solas a partir de los datos.
 - Respeta `prefers-reduced-motion`: las animaciones no se reproducen solas.
 
 ---
+
+## Enlaces
+
+Todos los enlaces internos se comprueban recorriendo el sitio completo (sin enlaces rotos). Los únicos enlaces externos son las 9 referencias a estudios científicos (sección Aprende y recomendados), que abren en una pestaña nueva.
 
 ## Publicación en internet
 

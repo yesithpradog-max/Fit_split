@@ -27,6 +27,8 @@ const Views = (() => {
   const PHASE_TYPES = { start: 'Inicio', ecc: 'Excéntrica', turn: 'Transición', con: 'Concéntrica', end: 'Final' };
   const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const go = hash => { location.hash = hash; };
+  /* Animaciones 3D si el navegador admite WebGL; si no, las 2D */
+  const use3D = () => typeof Animations3D !== 'undefined' && Animations3D.supported;
 
   /* El enrutador registra aquí su función de dibujado */
   let rerender = () => {};
@@ -132,7 +134,7 @@ const Views = (() => {
     const phases = Animations.phases(ex);
     return `<div class="anim-card">
       <div class="anim-head">
-        <span class="anim-view">${icon('eye')}${Animations.viewLabel(ex)}</span>
+        <span class="anim-view">${icon(use3D() ? 'cube' : 'eye')}${use3D() ? Animations3D.viewLabel(ex) : Animations.viewLabel(ex)}</span>
         <span class="anim-legend"><span><i class="lg-p"></i>Trabaja</span><span><i class="lg-s"></i>Ayuda</span><span><i class="lg-b"></i>Otros músculos</span></span>
       </div>
       <div class="anim-stage" data-stage></div>
@@ -156,7 +158,7 @@ const Views = (() => {
       toggleBtn.innerHTML = playing ? `${icon('pause')}<span>Pausar</span>` : `${icon('play')}<span>Reproducir</span>`;
       toggleBtn.setAttribute('aria-label', playing ? 'Pausar animación' : 'Reproducir animación');
     };
-    const animator = Animations.create(scope.querySelector('[data-stage]'), ex, {
+    const animator = (use3D() ? Animations3D : Animations).create(scope.querySelector('[data-stage]'), ex, {
       onPhase: ph => {
         scope.querySelectorAll('.phase-chip').forEach(c => c.setAttribute('aria-current', String(c.dataset.phase === ph.key)));
         scope.querySelectorAll('.step').forEach(s => s.classList.toggle('is-active', s.dataset.phase === ph.key));
@@ -520,30 +522,12 @@ const Views = (() => {
     }).join('')}</div>`;
   }
 
-  function planSettings(plan) {
-    const goal = GOALS[WorkoutStore.getGoal()];
-    const card = (label, value, text, href, cta, ic) => `<div class="setting-card">
-      <span class="setting-icon">${icon(ic)}</span>
-      <div><p class="setting-label">${label}</p><p class="setting-value">${esc(value)}</p><p class="muted small">${esc(text)}</p></div>
-      <a class="btn btn-ghost btn-sm" href="${href}">${cta}</a></div>`;
-    return `<div class="settings-grid">
-        ${card('Objetivo', goal.name, goal.tagline, '#/plan/objetivo', 'Cambiar objetivo', GOAL_ICONS[goal.id] || 'target')}
-        ${card('Método', plan.method.name, plan.method.tagline, '#/plan/metodo', 'Cambiar método', 'split')}
-        ${card('Frecuencia', plan.variant.name, plan.variant.description, '#/plan/frecuencia', 'Cambiar frecuencia', 'calendar')}
-        ${card('Rutina actual', `${UI.plural(WorkoutStore.countSelected(plan.m, plan.v), 'ejercicio elegido', 'ejercicios elegidos')}`, 'Cambia los ejercicios de cualquier día. El entrenador revisa cada cambio.', '#/plan/frecuencia', 'Modificar rutina', 'edit')}
-      </div>
-      <p class="callout">${icon('info')}<span>Si cambias de método o frecuencia, tu rutina actual queda guardada por si vuelves a ella.</span></p>
-      <div class="danger-zone">
-        <div><strong>Empezar de cero</strong><p class="muted small">Borra tu objetivo, tu plan, tus rutinas y tu racha de este navegador.</p></div>
-        <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="reset-all">${icon('trash')}<span>Borrar mis datos</span></button>
-      </div>`;
-  }
-
   function dashboard() {
     const plan = currentPlan();
     const goal = GOALS[WorkoutStore.getGoal()];
     const st = WorkoutStore.getStreak();
     const topic = id => LEARN_TOPICS.find(t => t.id === id);
+    const editDay = plan.variant.schedule[st.todayId] ? st.todayId : Planner.trainingDays(plan.variant)[0].id;
     const html = `
       <section class="dash dash-me">
         <div class="container">
@@ -559,13 +543,16 @@ const Views = (() => {
               <li class="chip chip-static">${icon('calendar')}${esc(plan.variant.name)}</li>
             </ul>
           </div>
+          <div class="me-actions">
+            <a class="btn btn-secondary" href="#/plan/metodo">${icon('split')}<span>Cambiar método de entrenamiento</span></a>
+            <a class="btn btn-secondary" href="#/plan/dia/${editDay}">${icon('edit')}<span>Cambiar ejercicios del método actual</span></a>
+          </div>
           <div class="me-grid">
             ${todayCard(plan, st)}
             ${streakCard(st)}
           </div>
           ${UI.tabs('me', [
             { id: 'semana', label: 'Mi semana', html: weekList(plan, st) },
-            { id: 'plan', label: 'Mi plan', html: planSettings(plan) },
             { id: 'fundamentos', label: 'Fundamentos', html: `<div class="topic-grid">${FUNDAMENTALS.map((id, i) => UI.topicCard(topic(id), { featured: i === 0 })).join('')}</div>
               <div class="explore-grid explore-row">
                 <a class="explore-tile" href="#/ejercicios">${icon('dumbbell')}<span><strong>Ejercicios</strong><small>${EXERCISES.length} con animación</small></span></a>
@@ -573,6 +560,10 @@ const Views = (() => {
                 <a class="explore-tile" href="#/sobre">${icon('info')}<span><strong>Sobre FIT SPLIT</strong><small>El proyecto</small></span></a>
               </div>` }
           ])}
+          <div class="me-foot">
+            <a class="text-link" href="#/plan/objetivo">${icon('target')}<span>Cambiar objetivo (${esc(goal.name.toLowerCase())})</span></a>
+            <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="reset-all">${icon('trash')}<span>Borrar mis datos</span></button>
+          </div>
         </div>
       </section>`;
     return {
@@ -1529,7 +1520,7 @@ const Views = (() => {
       ['Datos', 'data.js · exercises.js · learn.js', 'Métodos, sesiones, ejercicios, recomendados y contenido educativo como objetos de JavaScript.'],
       ['Lógica', 'workouts.js', 'Planner calcula sesiones y el orden automático de la rutina. WorkoutStore guarda el plan, la rutina, el entrenamiento en curso y la racha en localStorage.'],
       ['Entrenador', 'coach.js', 'Valoración de cada ejercicio, recomendados con estudios, límites de seguridad por sesión y autocompletado.'],
-      ['Animaciones', 'animations.js', `Cuerpo transparente en SVG con músculos visibles, cinemática inversa y ${Animations.presets.length} patrones de movimiento.`],
+      ['Animaciones', 'animations.js · animations3d.js', `${Animations.presets.length} patrones de movimiento con cinemática inversa. Se muestran en 3D con three.js (cuerpo de cristal con músculos, cámara giratoria) y en 2D si el navegador no admite WebGL.`],
       ['Interfaz', 'ui.js · views.js · app.js', 'Componentes reutilizables, vistas por paso y un enrutador por hash con botón de retroceso.'],
       ['Estilos', 'styles.css · responsive.css', 'Diseño oscuro con variables CSS, adaptado a computador, tablet y teléfono.']
     ];
