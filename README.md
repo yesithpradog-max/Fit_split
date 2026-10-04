@@ -197,18 +197,19 @@ El botón **«Descargar app»** (cabecera, pie de página y «Sobre el proyecto�
 
 | Dispositivo | Qué se instala |
 |---|---|
-| **Android** | App nativa (`fit-split.apk`), generada con **Capacitor** a partir de esta misma web. Se descarga de la versión [`android-latest`](https://github.com/yesithpradog-max/Fit_split/releases/tag/android-latest) del repositorio. |
+| **Android** | App nativa (`fit-split.apk`), generada con **Capacitor** a partir de esta misma web. Se descarga de la propia web (`app/fit-split.apk`) y, como alternativa, de la versión [`android-latest`](https://github.com/yesithpradog-max/Fit_split/releases/tag/android-latest) del repositorio. |
 | **iPhone / iPad** | Apple no permite instalar apps fuera de la App Store con un botón: guía de Safari «Compartir → Añadir a pantalla de inicio». Queda como app web con icono, a pantalla completa y sin conexión. |
 | **Ordenador** | Instalación del navegador (Chrome / Edge) o «Añadir al Dock» en Safari. |
 
 - **Web instalable (PWA):** `manifest.webmanifest`, iconos en `assets/icons/app/` y `sw.js`, que guarda la web en el dispositivo para usarla sin conexión. Al cambiar archivos de la web hay que subir `VERSION` en `sw.js`.
 - **App de Android (`android-app/`):** proyecto Capacitor con icono, tema oscuro y firma propia. `prepare-www.mjs` copia la web dentro de la app.
-- **Compilación automática:** `.github/workflows/android.yml` compila el APK en GitHub Actions cada vez que cambia la web y lo publica en `android-latest`; cada compilación sube el número de versión, así la app se actualiza encima de la anterior.
+- **Publicación automática:** `.github/workflows/publicar.yml` compila y comprueba el APK en GitHub Actions cada vez que cambia algo, publica la web con el APK dentro (GitHub Pages con origen «GitHub Actions») y copia el APK en `android-latest`. Cada compilación sube el número de versión, así la app se actualiza encima de la anterior.
+- **Instalación en Android:** como la app no viene de Google Play, el teléfono pide permitir «Instalar apps desconocidas» y Google Play Protect puede avisar; hay que tocar «Más detalles → Instalar de todas formas».
 - La clave de firma está en el repositorio porque es un proyecto universitario y la app se distribuye fuera de Google Play. Para publicarla en una tienda habría que crear una clave privada nueva.
 
 ## Publicación en internet
 
-Publicado con **GitHub Pages** desde la rama `main` (carpeta raíz): https://yesithpradog-max.github.io/Fit_split/
+Publicado con **GitHub Pages** (origen «GitHub Actions», flujo `publicar.yml`): https://yesithpradog-max.github.io/Fit_split/
 
 - `.nojekyll` evita que GitHub procese los archivos con Jekyll.
 - `sitemap.xml` y `robots.txt` ayudan a que Google encuentre la página; para aparecer al buscar "FIT SPLIT" hay que registrar el sitio en Google Search Console y solicitar la indexación.
