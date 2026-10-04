@@ -1,0 +1,68 @@
+# Compila la app de Android (Capacitor) cada vez que cambia la web y publica
+# el APK en la versión «android-latest» del repositorio. El botón «Descargar
+# app» de la web enlaza a:
+# https://github.com/yesithpradog-max/Fit_split/releases/download/android-latest/fit-split.apk
+name: App Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'css/**'
+      - 'js/**'
+      - 'assets/**'
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: android-app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar Capacitor
+        working-directory: android-app
+        run: npm ci
+
+      - name: Copiar la web dentro de la app
+        working-directory: android-app
+        run: npm run sync
+
+      - name: Compilar el APK firmado
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Publicar el APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android-app/android/app/build/outputs/apk/release/app-release.apk fit-split.apk
+          ls -lh fit-split.apk
+          if ! gh release view android-latest >/dev/null 2>&1; then
+            gh release create android-latest --title "FIT SPLIT para Android" \
+              --notes "App de Android de FIT SPLIT. Se actualiza sola cada vez que cambia la web. Descarga fit-split.apk e instálalo (permite «Instalar apps desconocidas» si el teléfono lo pide)."
+          fi
+          gh release upload android-latest fit-split.apk --clobber

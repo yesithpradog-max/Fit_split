@@ -1,0 +1,9 @@
+{
+  "appId": "io.github.yesithpradogmax.fitsplit",
+  "appName": "FIT SPLIT",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0b0d11",
+    "appendUserAgent": "FitSplitApp"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "fit-split-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App de Android de FIT SPLIT (Capacitor): empaqueta la web de la carpeta superior.",
+  "scripts": {
+    "web": "node prepare-www.mjs",
+    "sync": "node prepare-www.mjs && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9"
+  }
+}

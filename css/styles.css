@@ -1046,3 +1046,29 @@ details.rec-note[open] summary::after { content: 'Ocultar'; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .about-side { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+
+/* ------------------------------ Descargar app ------------------------------ */
+button.home-link { font: inherit; cursor: pointer; border: 0; }
+.install-link[hidden] { display: none; }
+.inst-os { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+.inst-os-btn {
+  display: grid; justify-items: center; gap: .3rem; padding: .8rem .4rem; border-radius: 14px; cursor: pointer;
+  font: inherit; font-size: .85rem; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line-2);
+}
+.inst-os-btn .icon { width: 26px; height: 26px; }
+.inst-os-btn small { font-size: .66rem; font-weight: 600; color: var(--text-3); }
+.inst-os-btn:hover { color: var(--text); border-color: var(--text-3); }
+.inst-os-btn[aria-checked="true"] { color: var(--text); border-color: var(--text); background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--text); }
+.inst-panel { display: grid; gap: .8rem; }
+.inst-lead { margin: 0; color: var(--text-2); font-size: .92rem; }
+.inst-warn { margin: 0; padding: .7rem .85rem; border-radius: 12px; font-size: .86rem; color: var(--text); background: color-mix(in srgb, var(--warn, #e0a33a) 16%, transparent); border: 1px solid color-mix(in srgb, var(--warn, #e0a33a) 45%, transparent); overflow-wrap: anywhere; }
+.inst-steps { margin: 0; padding-left: 1.2rem; display: grid; gap: .55rem; font-size: .9rem; color: var(--text-2); }
+.inst-steps strong { color: var(--text); }
+.inst-steps-ios { list-style: none; padding: 0; }
+.inst-steps-ios li { display: flex; align-items: center; gap: .75rem; }
+.inst-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line-2); color: #4e8ff0; }
+.inst-ico .icon { width: 22px; height: 22px; }
+.inst-ico-app { padding: 0; overflow: hidden; border: 0; }
+.inst-ico-app img { width: 40px; height: 40px; display: block; }
+.inst-alt { margin: 0; font-size: .84rem; color: var(--text-3); }
+.inst-alt .text-link { font: inherit; background: none; cursor: pointer; padding: 0; color: var(--text-2); }

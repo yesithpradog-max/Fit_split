@@ -1,3 +1,5 @@
 *.zip
 tools/node_modules
 tools/.cache
+android-app/node_modules
+android-app/www

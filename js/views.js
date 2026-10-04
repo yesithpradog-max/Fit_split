@@ -1533,6 +1533,11 @@ const Views = (() => {
                 <ol class="arch">${layers.map(([n, f, d]) => `<li><strong>${n}</strong><code>${f}</code><span>${d}</span></li>`).join('')}</ol>` }
             ])}</div>
             <div class="about-side">
+              <div class="side-box" data-install-app-box>
+                <h2>${icon('dumbbell')}App para el móvil</h2>
+                <p class="muted">Instala FIT SPLIT en Android (app nativa), en iPhone o en el ordenador. Funciona sin conexión.</p>
+                <button type="button" class="btn btn-primary btn-sm" data-install-app>${icon('arrow-right')}<span>Descargar app</span></button>
+              </div>
               <div class="side-box">
                 <h2>${icon('shield')}Aviso importante</h2>
                 <p class="muted">El contenido es educativo y general. No sustituye la valoración de un profesional sanitario, de la nutrición o del ejercicio. Si tienes una lesión, una condición médica o dudas, consulta antes de entrenar.</p>
