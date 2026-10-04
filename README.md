@@ -197,15 +197,12 @@ El botón **«Descargar app»** (cabecera, pie de página y «Sobre el proyecto�
 
 | Dispositivo | Qué se instala |
 |---|---|
-| **Android** | App nativa (`fit-split.apk`), generada con **Capacitor** a partir de esta misma web. Se descarga de la propia web (`app/fit-split.apk`) y, como alternativa, de la versión [`android-latest`](https://github.com/yesithpradog-max/Fit_split/releases/tag/android-latest) del repositorio. |
+| **Android** | Instalación desde **Chrome** como app web: botón «Instalar FIT SPLIT» (cuando Chrome lo ofrece) o menú **⋮ → «Instalar app»**. Queda con icono, a pantalla completa y sin conexión. Sin archivos `.apk` ni permisos de «apps desconocidas». |
 | **iPhone / iPad** | Apple no permite instalar apps fuera de la App Store con un botón: guía de Safari «Compartir → Añadir a pantalla de inicio». Queda como app web con icono, a pantalla completa y sin conexión. |
 | **Ordenador** | Instalación del navegador (Chrome / Edge) o «Añadir al Dock» en Safari. |
 
 - **Web instalable (PWA):** `manifest.webmanifest`, iconos en `assets/icons/app/` y `sw.js`, que guarda la web en el dispositivo para usarla sin conexión. Al cambiar archivos de la web hay que subir `VERSION` en `sw.js`.
-- **App de Android (`android-app/`):** proyecto Capacitor con icono, tema oscuro y firma propia. `prepare-www.mjs` copia la web dentro de la app.
-- **Publicación automática:** `.github/workflows/publicar.yml` compila y comprueba el APK en GitHub Actions cada vez que cambia algo, publica la web con el APK dentro (GitHub Pages con origen «GitHub Actions») y copia el APK en `android-latest`. Cada compilación sube el número de versión, así la app se actualiza encima de la anterior.
-- **Instalación en Android:** como la app no viene de Google Play, el teléfono pide permitir «Instalar apps desconocidas» y Google Play Protect puede avisar; hay que tocar «Más detalles → Instalar de todas formas».
-- La clave de firma está en el repositorio porque es un proyecto universitario y la app se distribuye fuera de Google Play. Para publicarla en una tienda habría que crear una clave privada nueva.
+- **Publicación automática:** `.github/workflows/publicar.yml` publica la web en GitHub Pages (origen «GitHub Actions») cada vez que cambia la rama `main`.
 
 ## Publicación en internet
 

@@ -4,8 +4,8 @@
    «Descargar app»: una ventana pregunta qué dispositivo usa la persona
    (se marca el que detecta el navegador) y muestra cómo instalarla:
 
-   - Android  → descarga la app nativa (.apk) que GitHub construye a
-                partir de esta misma web (carpeta android-app/).
+   - Android  → instalación de Chrome: un botón «Instalar» (si el
+                navegador lo ofrece) o la guía «⋮ → Instalar app».
    - iPhone   → Apple no permite instalar con un botón: guía de Safari
                 «Compartir → Añadir a pantalla de inicio» (app web).
    - Ordenador → instalación del navegador (Chrome / Edge) si existe.
@@ -17,25 +17,24 @@
 const Install = (() => {
   'use strict';
 
-  // El APK se publica junto a la web (mismo servidor: descarga más fiable)
-  // y, como alternativa, en la versión «android-latest» de GitHub.
-  const APK_URL = 'app/fit-split.apk';
-  const APK_ALT = 'https://github.com/yesithpradog-max/Fit_split/releases/download/android-latest/fit-split.apk';
   const ua = navigator.userAgent || '';
   const isAndroid = /android/i.test(ua);
   const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
   const isIOSSafari = isIOS && !/crios|fxios|edgios|opios|gsa\//i.test(ua);
-  const isNativeApp = /FitSplitApp/.test(ua) || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  const isStandalone = () => isNativeApp || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  // Navegadores dentro de otras apps (WhatsApp, Instagram, Facebook…) no permiten instalar
+  const isInApp = /; wv\)|FBAN|FBAV|Instagram|Line\/|WhatsApp/i.test(ua);
+  const isSamsung = /SamsungBrowser/i.test(ua);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const detected = isAndroid ? 'android' : isIOS ? 'ios' : 'desktop';
 
   /* Instalación del navegador (Chrome / Edge en Android y ordenador) */
   let deferred = null;
-  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; });
+  let rerender = null; // vuelve a pintar la ventana abierta cuando llega el aviso de instalación
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; if (rerender) rerender(); });
   window.addEventListener('appinstalled', () => { deferred = null; refreshButtons(); UI.toast('FIT SPLIT se ha instalado.'); });
 
   /* Service worker: la app web funciona sin conexión */
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !isNativeApp) {
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
 
@@ -58,17 +57,21 @@ const Install = (() => {
 
   function panel(id) {
     if (id === 'android') {
+      const url = esc(location.href.split('#')[0]);
       return `<div class="inst-panel">
-          <p class="inst-lead">App nativa de FIT SPLIT para Android (unos 5 MB). Funciona sin conexión.</p>
-          <a class="btn btn-primary btn-block" href="${APK_URL}" download="fit-split.apk">${I.download}<span>Descargar para Android (.apk)</span></a>
-          <ol class="inst-steps">
-            <li>Espera a que termine la descarga y abre <strong>fit-split.apk</strong> (en la notificación o en «Descargas»).</li>
-            <li>Si el teléfono lo pide, permite <strong>«Instalar apps desconocidas»</strong> para tu navegador y vuelve atrás.</li>
-            <li>Pulsa <strong>Instalar</strong>.</li>
-            <li>Si aparece <strong>Google Play Protect</strong> («app no reconocida» o «bloqueada»), <strong>no pulses Aceptar</strong>: toca <strong>«Más detalles» → «Instalar de todas formas»</strong>. Sale porque la app no está en Google Play.</li>
-          </ol>
-          <p class="inst-alt">¿La descarga no termina? Ábrela en <strong>Chrome</strong> (no dentro de WhatsApp o Instagram) o prueba <a class="text-link" href="${APK_ALT}" rel="noopener">este otro enlace</a>.</p>
-          ${deferred ? `<p class="inst-alt">¿Prefieres no instalar archivos? <button type="button" class="text-link" data-inst="prompt">Instálala desde Chrome</button>.</p>` : ''}
+          <p class="inst-lead">FIT SPLIT se instala desde <strong>Chrome</strong> como una app más: icono en el inicio, pantalla completa y funciona sin conexión. No hace falta descargar archivos.</p>
+          ${isAndroid && isInApp ? `<p class="inst-warn">Estás dentro de otra app (WhatsApp, Instagram…). Abre <strong>${url}</strong> en <strong>Chrome</strong> para poder instalarla.</p>` : ''}
+          ${deferred
+            ? `<button type="button" class="btn btn-primary btn-block" data-inst="prompt">${I.download}<span>Instalar FIT SPLIT</span></button>
+               <p class="inst-alt">Se abrirá un aviso de Chrome: pulsa <strong>Instalar</strong>.</p>`
+            : `<ol class="inst-steps">
+                <li>Abre esta página en <strong>Chrome</strong>.</li>
+                <li>Toca el menú <strong>⋮</strong> (arriba a la derecha).</li>
+                <li>Elige <strong>«Instalar app»</strong> o <strong>«Añadir a pantalla de inicio» → «Instalar»</strong>.</li>
+                <li>El icono de FIT SPLIT aparecerá con tus apps.</li>
+              </ol>
+              ${isSamsung ? `<p class="inst-alt">En <strong>Samsung Internet</strong>: menú <strong>≡</strong> → <strong>«Añadir página a» → «Pantalla de inicio»</strong>.</p>` : ''}
+              <p class="inst-alt">Si en el menú pone <strong>«Abrir app»</strong>, ya la tienes instalada.</p>`}
         </div>`;
     }
     if (id === 'ios') {
@@ -107,6 +110,7 @@ const Install = (() => {
         </div>
         <div class="inst-body" data-inst-body>${panel(current)}</div>`, { label: 'Descargar la app' });
     const body = dlg.querySelector('[data-inst-body]');
+    rerender = () => { if (dlg.isConnected) body.innerHTML = panel(current); else rerender = null; };
     dlg.addEventListener('click', async e => {
       const os = e.target.closest('[data-os]');
       if (os) {
@@ -137,5 +141,5 @@ const Install = (() => {
   document.addEventListener('DOMContentLoaded', refreshButtons);
   window.addEventListener('hashchange', () => setTimeout(refreshButtons, 60));
 
-  return { open, get standalone() { return isStandalone(); }, detected, APK_URL, APK_ALT };
+  return { open, get standalone() { return isStandalone(); }, detected };
 })();

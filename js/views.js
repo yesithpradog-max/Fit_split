@@ -1535,7 +1535,7 @@ const Views = (() => {
             <div class="about-side">
               <div class="side-box" data-install-app-box>
                 <h2>${icon('dumbbell')}App para el móvil</h2>
-                <p class="muted">Instala FIT SPLIT en Android (app nativa), en iPhone o en el ordenador. Funciona sin conexión.</p>
+                <p class="muted">Instala FIT SPLIT en Android, en iPhone o en el ordenador como una app más. Funciona sin conexión.</p>
                 <button type="button" class="btn btn-primary btn-sm" data-install-app>${icon('arrow-right')}<span>Descargar app</span></button>
               </div>
               <div class="side-box">

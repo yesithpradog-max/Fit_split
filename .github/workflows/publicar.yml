@@ -1,9 +1,6 @@
-# Publica FIT SPLIT en GitHub Pages junto con la app de Android.
-# 1. Compila la app de Android (Capacitor) a partir de la web y comprueba el APK.
-# 2. Publica la web con el APK dentro: https://yesithpradog-max.github.io/Fit_split/app/fit-split.apk
-#    (Settings → Pages → Source: «GitHub Actions»).
-# 3. Copia el APK también en la versión «android-latest» del repositorio.
-name: Publicar web y app
+# Publica FIT SPLIT en GitHub Pages cada vez que cambia la rama main.
+# (Settings → Pages → Source: «GitHub Actions»).
+name: Publicar web
 
 on:
   push:
@@ -11,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -25,64 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: android-app/package-lock.json
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Instalar Capacitor
-        working-directory: android-app
-        run: npm ci
-
-      - name: Copiar la web dentro de la app
-        working-directory: android-app
-        run: npm run sync
-
-      - name: Compilar el APK firmado
-        working-directory: android-app/android
+      - name: Preparar la web
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Comprobar el APK (firma y datos del paquete)
-        run: |
-          APK=android-app/android/app/build/outputs/apk/release/app-release.apk
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          {
-            echo "build-tools: $BT"
-            "$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1 | grep -v "^WARNING: META-INF"
-            "$BT/aapt2" dump badging "$APK" 2>&1 | head -6
-            "$BT/zipalign" -c -v 4 "$APK" 2>&1 | tail -1
-            sha256sum "$APK"
-          } | tee verificacion.txt
-          cp "$APK" fit-split.apk
-
-      - name: Preparar la web con la app
-        run: |
-          mkdir -p _site/app
+          mkdir -p _site
           cp -r index.html manifest.webmanifest sw.js robots.txt sitemap.xml .nojekyll css js assets _site/
-          cp fit-split.apk _site/app/fit-split.apk
           du -sh _site
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-
-      - name: Copiar el APK en la versión «android-latest»
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ! gh release view android-latest >/dev/null 2>&1; then
-            gh release create android-latest --title "FIT SPLIT para Android" \
-              --notes "App de Android de FIT SPLIT. Se actualiza sola cada vez que cambia la web."
-          fi
-          gh release upload android-latest fit-split.apk verificacion.txt --clobber
 
   deploy:
     needs: build

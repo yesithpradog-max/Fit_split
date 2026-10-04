@@ -6,7 +6,7 @@
    vez, se descarga la versión nueva para la próxima visita.
    Al cambiar archivos de la web, sube VERSION para renovar la copia.
    ===================================================================== */
-const VERSION = 'fitsplit-v3';
+const VERSION = 'fitsplit-v4';
 const FILES = [
   './',
   'index.html',
@@ -59,7 +59,7 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
-  if (url.origin !== location.origin || url.pathname.endsWith('.apk')) return; // la app de Android se descarga siempre de la red
+  if (url.origin !== location.origin) return;
   // Navegación: siempre la página principal (la app usa rutas con #)
   const key = req.mode === 'navigate' ? new Request('index.html') : req;
   e.respondWith(caches.open(VERSION).then(async c => {
